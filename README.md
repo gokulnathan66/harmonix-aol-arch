@@ -1,4 +1,4 @@
-# g2-aol-template
+# g2-aol-template 
 
 Complete template for creating AOL-compliant agents and services in the Pulse-AI multi-mesh architecture.
 
