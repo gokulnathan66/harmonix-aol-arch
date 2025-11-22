@@ -1,16 +1,17 @@
-kind: "AOLAgent"
+kind: "AOLService"  # Can be: AOLAgent, AOLTool, AOLPlugin, or AOLService
 apiVersion: "v1"
 metadata:
-  name: "example-agent"
+  name: "example-service"
   version: "1.0.0"
   labels:
-    agent-type: "example"
+    service-type: "example"
     role: "demonstration"
 
 spec:
   # Service endpoints
   endpoints:
     grpc: "50060"
+    sidecar: "50110"
     health: "50210"
     metrics: "8090"
   
@@ -79,7 +80,7 @@ spec:
         permission: "read"
         reason: "Need to access pulse history for context"
       
-      - collection: "validator-agent.validations"
+      - collection: "validator-service.validations"
         permission: "read"
         reason: "Cross-reference with validation results"
   

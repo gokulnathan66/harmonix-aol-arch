@@ -1,63 +1,31 @@
-kind: "AOLAgent"
-apiVersion: "v1"
-metadata:
-  name: "example-agent"
-  version: "1.0.0"
+# Agent configuration with data storage enabled
+# Use this as a reference when enabling data storage in your agent
 
-spec:
-  # Standard service configuration
-  name: "example-agent"
-  version: "1.0.0"
+# Data client configuration (REQUIRED if dataRequirements.enabled = true in manifest.yaml)
+dataClient:
+  enabled: true
+  aolCoreEndpoint: "aol-core:50051"      # Connect to AOL-Core for data operations
+  databaseEndpoint: "knowledge-db:8084"   # Direct DB connection (temporary fallback)
   
-  # Ports (matching manifest.yaml)
-  grpcPort: 50060
-  healthPort: 50210
-  metricsPort: 8090
+  # Performance optimization
+  cacheEnabled: true                      # Enable local caching for frequently accessed data
+  cacheTTL: 300                           # Cache time-to-live in seconds (5 minutes)
+  batchSize: 100                          # Batch write operations for efficiency
   
-  # Tags for Consul service discovery
-  tags:
-    - "agent"
-    - "example"
-  
-  # Consul configuration
-  consul:
-    host: "consul-server"
-    port: 8500
-  
-  # Monitoring configuration
-  monitoring:
-    logLevel: "INFO"
-    tracingEnabled: true
-    tracingEndpoint: "jaeger:4317"
-  
-  # Data client configuration (OPTIONAL - only if dataRequirements.enabled in manifest)
-  dataClient:
-    # Core settings
-    enabled: true
-    aolCoreEndpoint: "aol-core:50051"      # Connect to AOL-Core for data operations
-    databaseEndpoint: "knowledge-db:8084"   # Direct DB connection (temporary fallback)
-    
-    # Performance optimization
-    cacheEnabled: true                      # Enable local caching for frequently accessed data
-    cacheTTL: 300                           # Cache time-to-live in seconds (5 minutes)
-    batchSize: 100                          # Batch write operations for efficiency
-    
-    # Timeout and reliability
-    timeout: 30                             # Operation timeout in seconds
-    retryAttempts: 3                        # Number of retry attempts on failure
-    retryDelay: 1                           # Initial delay between retries (seconds)
-    
-    # Advanced settings (optional)
-    # connectionPoolSize: 100               # HTTP connection pool size
-    # healthCheckInterval: 60               # Health check interval (seconds)
-    # validateSchema: false                 # Enable JSON schema validation
-  
-  # Agent-specific configuration
-  agent:
-    model: "claude-haiku"
-    temperature: 0.3
-    maxTokens: 2048
-    systemPrompt: |
-      You are an example agent in the AOL multi-mesh system.
-      Your role is to demonstrate best practices.
+  # Timeout and reliability
+  timeout: 30                             # Operation timeout in seconds
+  retryAttempts: 3                        # Number of retry attempts on failure
+  retryDelay: 1                           # Initial delay between retries (seconds)
 
+monitoring:
+  tracingEnabled: false
+  metricsEnabled: true
+  logLevel: "INFO"
+
+# Agent-specific configuration
+# Add your agent-specific settings here
+# Example:
+# model: "claude-haiku"
+# temperature: 0.3
+# maxTokens: 2048
+# systemPrompt: "Your system prompt here"

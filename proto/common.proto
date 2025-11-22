@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package common;
+
+import "google/protobuf/timestamp.proto";
+
+message HealthStatus {
+  string status = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  map<string, string> details = 3;
+}
+
+message Error {
+  string code = 1;
+  string message = 2;
+  string details = 3;
+}
+
+message Metadata {
+  map<string, string> labels = 1;
+  map<string, string> annotations = 2;
+}
+

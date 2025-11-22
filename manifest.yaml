@@ -1,0 +1,66 @@
+kind: "AOLService"  # Can be: AOLAgent, AOLTool, AOLPlugin, or AOLService
+apiVersion: "v1"
+metadata:
+  name: "aol-service"
+  version: "1.0.0"
+  labels:
+    service-type: "template"
+    role: "service"
+
+spec:
+  endpoints:
+    grpc: "50050"
+    sidecar: "50100"
+    health: "50200"
+    metrics: "8080"
+  
+  configSchema:
+    - name: "model"
+      type: "string"
+      default: ""
+      description: "Model identifier (if using LLM)"
+    
+    - name: "maxTokens"
+      type: "int"
+      default: 4096
+      description: "Maximum tokens per request"
+    
+    - name: "temperature"
+      type: "float"
+      default: 0.7
+      description: "LLM temperature setting"
+  
+  dependencies:
+    - service: "aol-core"
+      optional: false
+  
+  # Data storage requirements (optional)
+  dataRequirements:
+    enabled: false
+    
+    # Collections this service will own and manage
+    collections:
+      - name: "thoughts"
+        description: "Agent thoughts and outputs"
+        schemaHint:
+          thought_id: "string"
+          pulse_id: "string"
+          timestamp: "datetime"
+          analysis: "text"
+          confidence: "number"
+        indexes:
+          - fields: ["timestamp"]
+            type: "descending"
+          - fields: ["pulse_id"]
+            type: "ascending"
+    
+    # Collections from other services this service needs to access
+    accessRequests:
+      - collection: "heart-pulse-service.pulses"
+        permission: "read"
+        reason: "Access pulse history for context"
+  
+  resources:
+    cpu: "1000m"
+    memory: "1Gi"
+

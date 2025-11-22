@@ -1,22 +1,25 @@
 #!/bin/bash
 #
 # Quick Setup Script for Creating New AOL Service
-# Usage: ./create-service.sh my-new-service
+# Usage: ./create-service.sh my-new-service [service-type]
+# Service types: Agent, Tool, Plugin, Service (default: Service)
 
 set -e
 
 # Check if service name provided
 if [ -z "$1" ]; then
-    echo "Usage: ./create-service.sh <service-name>"
-    echo "Example: ./create-service.sh text-analyzer"
+    echo "Usage: ./create-service.sh <service-name> [service-type]"
+    echo "Example: ./create-service.sh text-analyzer Agent"
+    echo "Service types: Agent, Tool, Plugin, Service (default: Service)"
     exit 1
 fi
 
 SERVICE_NAME=$1
+SERVICE_TYPE=${2:-Service}
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TARGET_DIR="../app/$SERVICE_NAME"
 
-echo "🚀 Creating new AOL service: $SERVICE_NAME"
+echo "🚀 Creating new AOL service: $SERVICE_NAME (type: $SERVICE_TYPE)"
 echo ""
 
 # Check if target already exists
@@ -25,14 +28,20 @@ if [ -d "$TARGET_DIR" ]; then
     exit 1
 fi
 
-# Create service directory
-echo "📁 Creating directory: $TARGET_DIR"
-mkdir -p "$TARGET_DIR"
+# Create service directory structure
+echo "📁 Creating directory structure: $TARGET_DIR"
+mkdir -p "$TARGET_DIR/service"
+mkdir -p "$TARGET_DIR/utils"
+mkdir -p "$TARGET_DIR/sidecar"
+mkdir -p "$TARGET_DIR/proto"
+mkdir -p "$TARGET_DIR/examples"
 
 # Copy template files
 echo "📋 Copying template files..."
-cp "$SCRIPT_DIR/agent.py" "$TARGET_DIR/"
-cp "$SCRIPT_DIR/sidecar.py" "$TARGET_DIR/"
+cp -r "$SCRIPT_DIR/service/"* "$TARGET_DIR/service/"
+cp -r "$SCRIPT_DIR/utils/"* "$TARGET_DIR/utils/"
+cp -r "$SCRIPT_DIR/sidecar/"* "$TARGET_DIR/sidecar/"
+cp -r "$SCRIPT_DIR/proto/"* "$TARGET_DIR/proto/"
 cp "$SCRIPT_DIR/requirements.txt" "$TARGET_DIR/"
 cp "$SCRIPT_DIR/Dockerfile" "$TARGET_DIR/"
 
@@ -44,7 +53,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     cp "$SCRIPT_DIR/config-with-data.yaml" "$TARGET_DIR/config.yaml"
     echo "✅ Using manifest with data storage"
 else
-    cp "$SCRIPT_DIR/config.yaml" "$TARGET_DIR/manifest.yaml"
+    cp "$SCRIPT_DIR/manifest.yaml" "$TARGET_DIR/manifest.yaml"
     cp "$SCRIPT_DIR/config.yaml" "$TARGET_DIR/config.yaml"
     echo "✅ Using basic manifest"
 fi
@@ -70,17 +79,35 @@ METRICS_PORT=${METRICS_PORT:-8095}
 # Update files
 echo "✏️  Customizing configuration..."
 
+# Determine kind based on service type
+case "$SERVICE_TYPE" in
+    Agent|agent|AGENT)
+        SERVICE_KIND="AOLAgent"
+        ;;
+    Tool|tool|TOOL)
+        SERVICE_KIND="AOLTool"
+        ;;
+    Plugin|plugin|PLUGIN)
+        SERVICE_KIND="AOLPlugin"
+        ;;
+    *)
+        SERVICE_KIND="AOLService"
+        ;;
+esac
+
 # Update manifest.yaml
-sed -i.bak "s/example-agent/$SERVICE_NAME/g" "$TARGET_DIR/manifest.yaml"
+sed -i.bak "s/kind: \"AOLService\"/kind: \"$SERVICE_KIND\"/g" "$TARGET_DIR/manifest.yaml"
+sed -i.bak "s/name: \"aol-service\"/name: \"$SERVICE_NAME\"/g" "$TARGET_DIR/manifest.yaml"
+sed -i.bak "s/name: \"example-service\"/name: \"$SERVICE_NAME\"/g" "$TARGET_DIR/manifest.yaml"
+sed -i.bak "s/50050/$GRPC_PORT/g" "$TARGET_DIR/manifest.yaml"
+sed -i.bak "s/50200/$HEALTH_PORT/g" "$TARGET_DIR/manifest.yaml"
+sed -i.bak "s/8080/$METRICS_PORT/g" "$TARGET_DIR/manifest.yaml"
 sed -i.bak "s/50060/$GRPC_PORT/g" "$TARGET_DIR/manifest.yaml"
 sed -i.bak "s/50210/$HEALTH_PORT/g" "$TARGET_DIR/manifest.yaml"
 sed -i.bak "s/8090/$METRICS_PORT/g" "$TARGET_DIR/manifest.yaml"
 
-# Update config.yaml
-sed -i.bak "s/example-agent/$SERVICE_NAME/g" "$TARGET_DIR/config.yaml"
-sed -i.bak "s/50060/$GRPC_PORT/g" "$TARGET_DIR/config.yaml"
-sed -i.bak "s/50210/$HEALTH_PORT/g" "$TARGET_DIR/config.yaml"
-sed -i.bak "s/8090/$METRICS_PORT/g" "$TARGET_DIR/config.yaml"
+# Update config.yaml (if it has service name references)
+sed -i.bak "s/aol-service/$SERVICE_NAME/g" "$TARGET_DIR/config.yaml" 2>/dev/null || true
 
 # Clean up backup files
 rm "$TARGET_DIR"/*.bak
@@ -91,7 +118,11 @@ echo ""
 echo "📁 Service location: $TARGET_DIR"
 echo ""
 echo "Next steps:"
-echo "1. Edit $TARGET_DIR/agent.py and implement your Think() logic"
+echo "1. Edit $TARGET_DIR/service/main.py and implement your Process() method"
+echo "   - For Agents: Implement Think() logic"
+echo "   - For Tools: Implement Execute() logic"
+echo "   - For Plugins: Implement Handle() logic"
+echo "   - For Services: Implement Process() logic"
 echo "2. Add service to docker-compose.yml:"
 echo ""
 echo "  $SERVICE_NAME:"

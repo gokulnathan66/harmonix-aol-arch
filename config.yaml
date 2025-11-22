@@ -1,35 +1,19 @@
-kind: "AOLAgent"
-apiVersion: "v1"
-metadata:
-  name: "aol-agent"
-  version: "1.0.0"
+# Agent configuration
+# This file should be customized for your specific agent
 
-spec:
-  # Agent configuration
-  name: "aol-agent"
-  version: "1.0.0"
-  
-  # Ports
-  grpcPort: 50050
-  healthPort: 50200
-  metricsPort: 8080
-  
-  # Tags for Consul service discovery
-  tags:
-    - "agent"
-    - "aol"
-  
-  # Consul configuration
-  consul:
-    host: "consul-server"
-    port: 8500
-  
-  # Monitoring
-  monitoring:
-    logLevel: "INFO"
-    tracingEnabled: true
-    tracingEndpoint: "jaeger:4317"
-  
-  # Agent-specific configuration
-  # Add your agent-specific settings here
+# Data client configuration
+dataClient:
+  enabled: false  # Set to true if your agent needs data storage
+  aolCoreEndpoint: "aol-core:50051"
+  databaseEndpoint: "knowledge-db:8084"  # Direct connection (temporary)
+  cacheEnabled: true
+  cacheTTL: 300
+  batchSize: 100
+  timeout: 30
+  retryAttempts: 3
+  retryDelay: 1
 
+monitoring:
+  tracingEnabled: false
+  metricsEnabled: true
+  logLevel: "INFO"

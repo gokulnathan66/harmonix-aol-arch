@@ -4,28 +4,29 @@ WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
+    gcc \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install
-COPY requirements.txt /app/requirements.txt
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy shared utilities (from parent project)
-# NOTE: This Dockerfile assumes build context is set from project root
-# When using docker-compose, the build context should be '.' (project root)
-# Example: docker build -f g2-aol-template/Dockerfile -t my-agent .
-# The paths below are relative to the project root where shared/ and aol-core/ exist
-COPY shared/ /app/shared/
-COPY aol-core/registry/ /app/registry/
+# Copy application code
+COPY . .
 
-# Copy service files
-COPY . /app/service/
+# Generate protobuf files
+RUN python -m grpc_tools.protoc \
+    -I./proto \
+    --python_out=. \
+    --grpc_python_out=. \
+    ./proto/common.proto \
+    ./proto/health.proto \
+    ./proto/metrics.proto \
+    ./proto/service.proto
 
-WORKDIR /app/service
+# Expose ports (defaults - should be overridden in docker-compose)
+EXPOSE 50050 50100 50200 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s \
-    CMD python -c "import requests; requests.get('http://localhost:${HEALTH_PORT:-50200}/health').raise_for_status()"
-
-CMD ["python", "agent.py"]
+# Run the application
+CMD ["python", "service/main.py"]
