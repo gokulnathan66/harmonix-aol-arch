@@ -1,0 +1,98 @@
+kind: "AOLAgent"
+apiVersion: "v1"
+metadata:
+  name: "example-agent"
+  version: "1.0.0"
+  labels:
+    agent-type: "example"
+    role: "demonstration"
+
+spec:
+  # Service endpoints
+  endpoints:
+    grpc: "50060"
+    health: "50210"
+    metrics: "8090"
+  
+  # Configuration schema
+  configSchema:
+    - name: "model"
+      type: "string"
+      default: "claude-haiku"
+      description: "LLM model to use"
+    
+    - name: "temperature"
+      type: "float"
+      default: 0.3
+      description: "LLM temperature"
+    
+    - name: "maxTokens"
+      type: "int"
+      default: 2048
+      description: "Maximum tokens per request"
+  
+  # Data storage requirements (OPTIONAL - only if service needs persistence)
+  dataRequirements:
+    enabled: true
+    
+    # Collections this service will own and manage
+    collections:
+      - name: "thoughts"
+        description: "Agent reasoning outputs and analysis"
+        schemaHint:
+          thought_id: "string"
+          timestamp: "datetime"
+          analysis: "text"
+          confidence: "number"
+        indexes:
+          - fields: ["timestamp"]
+            type: "ascending"
+          - fields: ["confidence"]
+            type: "descending"
+      
+      - name: "metrics"
+        description: "Performance and usage metrics"
+        schemaHint:
+          metric_name: "string"
+          value: "number"
+          timestamp: "datetime"
+          tags: "object"
+        indexes:
+          - fields: ["metric_name", "timestamp"]
+            type: "compound"
+      
+      - name: "cache"
+        description: "Temporary cached data"
+        schemaHint:
+          key: "string"
+          value: "object"
+          cached_at: "datetime"
+          ttl: "number"
+        indexes:
+          - fields: ["key"]
+            type: "ascending"
+            unique: true
+    
+    # Collections from other services this service needs to access
+    accessRequests:
+      - collection: "heart-pulse.pulses"
+        permission: "read"
+        reason: "Need to access pulse history for context"
+      
+      - collection: "validator-agent.validations"
+        permission: "read"
+        reason: "Cross-reference with validation results"
+  
+  # Service dependencies
+  dependencies:
+    - service: "aol-core"
+      optional: false
+    - service: "knowledge-db"
+      optional: false  # Required if dataRequirements.enabled = true
+    - service: "consul-server"
+      optional: false
+  
+  # Resource requirements
+  resources:
+    cpu: "500m"
+    memory: "512Mi"

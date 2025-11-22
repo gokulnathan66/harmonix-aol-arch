@@ -1,0 +1,35 @@
+kind: "AOLAgent"
+apiVersion: "v1"
+metadata:
+  name: "aol-agent"
+  version: "1.0.0"
+
+spec:
+  # Agent configuration
+  name: "aol-agent"
+  version: "1.0.0"
+  
+  # Ports
+  grpcPort: 50050
+  healthPort: 50200
+  metricsPort: 8080
+  
+  # Tags for Consul service discovery
+  tags:
+    - "agent"
+    - "aol"
+  
+  # Consul configuration
+  consul:
+    host: "consul-server"
+    port: 8500
+  
+  # Monitoring
+  monitoring:
+    logLevel: "INFO"
+    tracingEnabled: true
+    tracingEndpoint: "jaeger:4317"
+  
+  # Agent-specific configuration
+  # Add your agent-specific settings here
+
