@@ -1,0 +1,139 @@
+syntax = "proto3";
+
+package aol;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
+
+// AOL Core service
+service AOLCore {
+  // Service registration
+  rpc RegisterService(RegisterRequest) returns (RegisterResponse);
+  rpc DeregisterService(DeregisterRequest) returns (DeregisterResponse);
+  
+  // Service discovery
+  rpc ListServices(ListServicesRequest) returns (ListServicesResponse);
+  rpc GetService(GetServiceRequest) returns (GetServiceResponse);
+  
+  // Health management
+  rpc ReportHealth(HealthReport) returns (HealthAck);
+  
+  // Routing
+  rpc Route(RouteRequest) returns (RouteResponse);
+}
+
+message RegisterRequest {
+  ServiceManifest manifest = 1;
+  string host = 2;
+  int32 grpc_port = 3;
+  int32 health_port = 4;
+  int32 metrics_port = 5;
+}
+
+message RegisterResponse {
+  bool success = 1;
+  string service_id = 2;
+  string error = 3;
+}
+
+message DeregisterRequest {
+  string service_name = 1;
+  string service_id = 2;
+}
+
+message DeregisterResponse {
+  bool success = 1;
+}
+
+message ServiceManifest {
+  string kind = 1;
+  string api_version = 2;
+  Metadata metadata = 3;
+  ServiceSpec spec = 4;
+}
+
+message Metadata {
+  string name = 1;
+  string version = 2;
+  map<string, string> labels = 3;
+}
+
+message ServiceSpec {
+  Endpoints endpoints = 1;
+  repeated ConfigField config_schema = 2;
+  repeated Dependency dependencies = 3;
+  Resources resources = 4;
+}
+
+message Endpoints {
+  int32 grpc = 1;
+  int32 sidecar = 2;
+  int32 health = 3;
+  int32 metrics = 4;
+}
+
+message ConfigField {
+  string name = 1;
+  string type = 2;
+  google.protobuf.Value default_value = 3;
+  string description = 4;
+}
+
+message Dependency {
+  string service = 1;
+  bool optional = 2;
+}
+
+message Resources {
+  string cpu = 1;
+  string memory = 2;
+}
+
+message ListServicesRequest {
+  string filter_type = 1;
+}
+
+message ListServicesResponse {
+  repeated ServiceInfo services = 1;
+}
+
+message ServiceInfo {
+  string name = 1;
+  string version = 2;
+  string host = 3;
+  int32 grpc_port = 4;
+  string status = 5;
+  google.protobuf.Timestamp registered_at = 6;
+}
+
+message GetServiceRequest {
+  string service_name = 1;
+}
+
+message GetServiceResponse {
+  ServiceInfo service = 1;
+}
+
+message HealthReport {
+  string service_name = 1;
+  string status = 2;
+  map<string, string> details = 3;
+}
+
+message HealthAck {
+  bool received = 1;
+}
+
+message RouteRequest {
+  string target_service = 1;
+  string method = 2;
+  bytes payload = 3;
+  map<string, string> headers = 4;
+}
+
+message RouteResponse {
+  bool success = 1;
+  bytes response = 2;
+  string error = 3;
+}
+

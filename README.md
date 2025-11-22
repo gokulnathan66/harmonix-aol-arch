@@ -34,6 +34,33 @@ This template follows the **loosely coupled microservices architecture** designe
 - **No shared files**: All utilities are duplicated in each service for complete independence
 - **Multi-agent ready**: Supports agents, tools, plugins, and services working together
 
+### Service Registration & Discovery Pattern
+
+**Important**: This pattern is the SAME for ALL services (agents, tools, plugins, services):
+
+1. **Register WITH Consul** (Direct)
+   - Each service registers itself with Consul using `consul.Consul()` client
+   - Consul is the central service registry
+   - Environment variable: `CONSUL_HTTP_ADDR` (default: `consul-server:8500`)
+
+2. **Discover OTHER services VIA aol-core** (Indirect)
+   - aol-core reads from Consul and provides discovery API
+   - **aol-core is the SAME instance for everyone** - it manages all services
+   - Services use `AOLServiceDiscoveryClient` to query aol-core
+   - Environment variable: `AOL_CORE_ENDPOINT` (default: `http://aol-core:8080`)
+
+3. **aol-core Management**
+   - aol-core is the central management service
+   - It discovers services from Consul
+   - It provides service discovery API (`/api/discovery/{service_name}`)
+   - It manages routing, health checks, metrics, and data access
+   - **Every service uses the same aol-core instance**
+
+**Example Flow:**
+```
+Your Service → Registers with Consul → aol-core reads Consul → Other services query aol-core
+```
+
 ### Multi-Agent System Context
 
 This template is designed for building **AI multi-agent systems** that require:
@@ -279,17 +306,29 @@ async def Process(self, request):
 
 ### Service Discovery
 
-**Registration**: Services register directly with Consul:
+**Registration**: Services register directly with Consul (same for all services):
 ```python
+# Register WITH Consul directly
+consul_host = os.getenv('CONSUL_HTTP_ADDR', 'consul-server:8500').split(':')[0]
+consul_port = int(os.getenv('CONSUL_HTTP_ADDR', 'consul-server:8500').split(':')[1])
 self.consul_client = consul.Consul(host=consul_host, port=consul_port)
 self.consul_client.agent.service.register(...)
 ```
 
-**Discovery**: Services discover other services via aol-core:
+**Discovery**: Services discover OTHER services via aol-core (aol-core is same for everyone):
 ```python
-self.discovery_client = AOLServiceDiscoveryClient('http://aol-core:8080')
+# Discover OTHER services VIA aol-core
+# aol-core reads from Consul and provides discovery API
+aol_core_endpoint = os.getenv('AOL_CORE_ENDPOINT', 'http://aol-core:8080')
+self.discovery_client = AOLServiceDiscoveryClient(aol_core_endpoint)
 instances = await self.discovery_client.discover_service('service-name')
 ```
+
+**Key Points:**
+- ✅ All services register with Consul directly
+- ✅ All services discover other services via aol-core
+- ✅ aol-core is the SAME instance for everyone
+- ✅ aol-core manages all services by reading from Consul
 
 ### Self-Contained Utilities
 
@@ -402,8 +441,19 @@ General microservices that don't fit the above categories.
 - **Example**: `api-gateway`, `event-processor`, `scheduler-service`
 - **Method**: Override `Process()` to implement your logic
 
+## Infrastructure Components
+
+This template includes infrastructure components in `infrastructure/`:
+
+- **[aol-core](infrastructure/aol-core/)** - Central orchestration service (required)
+- **[consul](infrastructure/consul/)** - Service registry configuration (required)
+
+See [infrastructure/README.md](infrastructure/README.md) for setup instructions.
+
 ## Documentation
 
+- **[Architecture Pattern](docs/ARCHITECTURE.md)**: How services register with Consul and discover via aol-core (same for all services)
+- **[Infrastructure Setup](infrastructure/README.md)**: How to set up aol-core and Consul
 - [Multi-Agent System Needs](docs/multi-agent%20system-need.md): Requirements for AI multi-agent systems
 - [AOL Components](docs/AOL-components.md): Detailed breakdown of system components
 - [Data Patterns](docs/data_patterns.md): Guide to using the Data Client and storage patterns

@@ -1,0 +1,48 @@
+kind: "AOLCore"
+apiVersion: "v1"
+metadata:
+  name: "heart-pulse-aol"
+  version: "1.0.0"
+
+spec:
+  # gRPC Gateway Configuration
+  gateway:
+    host: "0.0.0.0"
+    port: 50051
+    tls:
+      enabled: false  # Enable in production
+      certFile: "/certs/server.crt"
+      keyFile: "/certs/server.key"
+  
+  # Consul Service Discovery
+  consul:
+    host: "consul-server"
+    port: 8500
+    datacenter: "heart-pulse-dc1"
+    connect:
+      enabled: true  # Enable Consul Connect for mTLS
+  
+  # Service Registry (now using Consul)
+  registry:
+    type: "consul"  # CHANGED from "memory"
+    healthCheckInterval: "10s"
+    deregistrationTimeout: "30s"
+  
+  # Client-side load balancing config
+  loadBalancing:
+    strategy: "round_robin"
+    healthCheckEnabled: true
+  
+  # Monitoring
+  monitoring:
+    metricsPort: 9090
+    healthPort: 50201
+    tracingEnabled: false
+    tracingEndpoint: "jaeger:4317"
+  
+  # Logging
+  logging:
+    level: "INFO"
+    format: "json"
+    destination: "stdout"
+

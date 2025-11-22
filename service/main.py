@@ -56,16 +56,31 @@ class AOLService:
             }
         })
         
+        # ============================================================
+        # ARCHITECTURE PATTERN (Same for ALL services):
+        # ============================================================
+        # 1. Register WITH Consul directly (service registry)
+        #    - All services register themselves with Consul
+        #    - Consul is the central service registry
+        # 2. Discover OTHER services VIA aol-core (service discovery)
+        #    - aol-core reads from Consul and provides discovery API
+        #    - aol-core is the SAME instance for everyone
+        #    - Use AOLServiceDiscoveryClient to query aol-core
+        # ============================================================
+        
         # Initialize Consul client for registration (direct Consul access for registration)
+        # This is how services register themselves - same pattern for all services
         consul_host = os.getenv('CONSUL_HTTP_ADDR', 'consul-server:8500').split(':')[0]
         consul_port = int(os.getenv('CONSUL_HTTP_ADDR', 'consul-server:8500').split(':')[1] if ':' in os.getenv('CONSUL_HTTP_ADDR', 'consul-server:8500') else 8500)
         self.consul_client = consul.Consul(host=consul_host, port=consul_port)
         
-        # Initialize aol-core service discovery client (for discovering other services)
+        # Initialize aol-core service discovery client (for discovering OTHER services)
+        # aol-core is the SAME for everyone - it manages all services
+        # Default: http://aol-core:8080 (can be overridden via AOL_CORE_ENDPOINT env var)
         aol_core_endpoint = os.getenv('AOL_CORE_ENDPOINT', 'http://aol-core:8080')
         self.discovery_client = AOLServiceDiscoveryClient(aol_core_endpoint)
         
-        # Register with Consul
+        # Register this service with Consul (so aol-core can discover it)
         self._register_self()
         
         # Initialize data client if enabled
@@ -73,7 +88,13 @@ class AOLService:
         self._initialize_data_client()
     
     def _register_self(self):
-        """Register service with Consul directly"""
+        """Register service with Consul directly
+        
+        This is the standard pattern for ALL services:
+        - Each service registers itself with Consul
+        - aol-core reads from Consul to discover services
+        - Other services query aol-core (not Consul directly) to find services
+        """
         hostname = socket.gethostname()
         service_name = self.config.get('metadata', {}).get('name') or self.config.get('spec', {}).get('name') or self.config.get('name', 'aol-service')
         service_id = f"{service_name}-{hostname}"
@@ -123,6 +144,7 @@ class AOLService:
             return
         
         # Initialize client (uses aol-core for discovery)
+        # aol-core is the SAME for everyone - it manages database access
         service_name = self.config.get('metadata', {}).get('name') or self.config.get('spec', {}).get('name') or self.config.get('name', 'aol-service')
         aol_core_endpoint = data_config.get('aolCoreEndpoint', 'http://aol-core:8080')
         if not aol_core_endpoint.startswith('http'):
