@@ -1,31 +1,146 @@
-# Agent configuration with data storage enabled
-# Use this as a reference when enabling data storage in your agent
+# AOL Service Configuration with Data Storage Enabled
+# This is an example configuration for services that need data persistence
+# Copy this and customize for your service
 
-# Data client configuration (REQUIRED if dataRequirements.enabled = true in manifest.yaml)
+# Service identity
+service:
+  name: "example-service"
+  version: "1.0.0"
+  kind: "AOLService"
+
+# Data client configuration (brokered persistence)
+# ENABLED - This service uses data storage
+# Also ensure manifest.yaml has dataRequirements.enabled: true
 dataClient:
   enabled: true
-  aolCoreEndpoint: "aol-core:50051"      # Connect to AOL-Core for data operations
-  databaseEndpoint: "knowledge-db:8084"   # Direct DB connection (temporary fallback)
-  
-  # Performance optimization
-  cacheEnabled: true                      # Enable local caching for frequently accessed data
-  cacheTTL: 300                           # Cache time-to-live in seconds (5 minutes)
-  batchSize: 100                          # Batch write operations for efficiency
-  
-  # Timeout and reliability
-  timeout: 30                             # Operation timeout in seconds
-  retryAttempts: 3                        # Number of retry attempts on failure
-  retryDelay: 1                           # Initial delay between retries (seconds)
+  aolCoreEndpoint: "aol-core:50051"
+  databaseEndpoint: "knowledge-db:8084"
+  cacheEnabled: true
+  cacheTTL: 300
+  batchSize: 100
+  timeout: 30
+  retryAttempts: 3
+  retryDelay: 1
+  # Namespace isolation - collections are prefixed with service name
+  namespace: "${SERVICE_NAME}"
 
+# Pub-Sub configuration (async coordination)
+pubsub:
+  enabled: true
+  eventBusEndpoint: "aol-core:50051"
+  maxQueueSize: 1000
+  processTimeout: 30
+  subscriptions:
+    maxConcurrent: 10
+    ackTimeout: 30
+    retryOnFailure: true
+    maxRetries: 3
+
+# Communication settings
+communication:
+  grpc:
+    maxConcurrentStreams: 100
+    keepaliveTime: 30000
+    keepaliveTimeout: 10000
+    permitWithoutCalls: true
+    maxRetries: 3
+    retryBackoff:
+      initial: 1000
+      max: 10000
+      multiplier: 2.0
+  
+  http:
+    timeout: 30
+    maxConnections: 100
+    retries: 3
+
+# Resilience configuration
+resilience:
+  circuitBreaker:
+    enabled: true
+    failureThreshold: 5
+    successThreshold: 3
+    timeout: 60
+    halfOpenRequests: 3
+  
+  retry:
+    enabled: true
+    maxAttempts: 3
+    initialDelay: 1
+    maxDelay: 10
+    multiplier: 2.0
+    retryableStatusCodes:
+      - 503
+      - 504
+      - 429
+  
+  timeout:
+    default: 30
+    discovery: 5
+    health: 5
+
+# Integration hooks
+integrations:
+  enabled: false
+  tools: {}
+  llm:
+    adapter: ""
+
+# Health & Lifecycle
+health:
+  heartbeat:
+    enabled: true
+    interval: 10
+    timeout: 5
+  
+  endpoints:
+    health: "/health"
+    ready: "/ready"
+    live: "/live"
+  
+  lifecycle:
+    gracefulShutdownTimeout: 30
+    preStopDelay: 5
+
+# Monitoring & Observability
 monitoring:
-  tracingEnabled: false
+  tracingEnabled: true
   metricsEnabled: true
   logLevel: "INFO"
+  
+  tracing:
+    endpoint: "${JAEGER_ENDPOINT}"
+    samplingRate: 0.1
+    propagation: "w3c"
+  
+  metrics:
+    endpoint: "/metrics"
+    pushGateway: ""
+    customLabels:
+      environment: "${ENVIRONMENT:-development}"
+  
+  logging:
+    format: "json"
+    includeTraceId: true
+    includeServiceInfo: true
 
-# Agent-specific configuration
-# Add your agent-specific settings here
-# Example:
-# model: "claude-haiku"
-# temperature: 0.3
-# maxTokens: 2048
-# systemPrompt: "Your system prompt here"
+# Discovery configuration
+discovery:
+  consul:
+    host: "${CONSUL_HTTP_ADDR:-consul-server:8500}"
+    token: "${CONSUL_TOKEN:-}"
+    datacenter: "dc1"
+  
+  aolCore:
+    endpoint: "${AOL_CORE_ENDPOINT:-http://aol-core:8080}"
+    timeout: 5
+    cacheEnabled: true
+    cacheTTL: 30
+
+# Schema validation
+validation:
+  enabled: true
+  strictMode: false
+  schemas:
+    request: ""
+    response: ""

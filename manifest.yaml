@@ -1,44 +1,91 @@
-kind: "AOLService"  # Can be: AOLAgent, AOLTool, AOLPlugin, or AOLService
+kind: "AOLService"  # Types: AOLAgent, AOLTool, AOLPlugin, AOLService
 apiVersion: "v1"
+
 metadata:
   name: "aol-service"
   version: "1.0.0"
   labels:
     service-type: "template"
     role: "service"
+    environment: "development"
+  annotations:
+    description: "AOL Service Template with full multi-agent orchestration support"
+    owner: "team-aol"
 
 spec:
+  # Service endpoints declaration
   endpoints:
     grpc: "50050"
     sidecar: "50100"
     health: "50200"
     metrics: "8080"
   
+  # Configuration schema for pluggable parameters
   configSchema:
     - name: "model"
       type: "string"
       default: ""
       description: "Model identifier (if using LLM)"
+      required: false
     
     - name: "maxTokens"
       type: "int"
       default: 4096
       description: "Maximum tokens per request"
+      required: false
     
     - name: "temperature"
       type: "float"
       default: 0.7
       description: "LLM temperature setting"
-  
+      required: false
+    
+    - name: "api_key"
+      type: "string"
+      default: ""
+      description: "API key for external integrations"
+      sensitive: true
+      required: false
+
+  # Service dependencies - orchestration requirements
   dependencies:
+    # Core dependencies (required for AOL mesh)
     - service: "aol-core"
       optional: false
-  
-  # Data storage requirements (optional)
+      version: ">=1.0.0"
+      config:
+        endpoint: "http://aol-core:8080"
+    
+    # Optional dependencies (declare what you might need)
+    - service: "consul-server"
+      optional: false
+      version: ">=1.15.0"
+    
+    # Data storage dependency (uncomment if dataRequirements.enabled = true)
+    # - service: "knowledge-db"
+    #   optional: false
+    #   comment: "Required when dataRequirements.enabled = true"
+    
+    # Tool dependencies (external integrations)
+    # - tool: "llm-backend"
+    #   optional: true
+    #   config:
+    #     model: "gpt-4o"
+    #     timeout: 30
+
+  # Data storage requirements (brokered persistence)
+  # ================================================
+  # To enable data storage:
+  # 1. Set enabled: true
+  # 2. Configure collections below
+  # 3. Uncomment knowledge-db dependency above
+  # 4. Set dataClient.enabled: true in config.yaml
+  # ================================================
   dataRequirements:
-    enabled: false
+    enabled: false  # Set to true to enable data storage
     
     # Collections this service will own and manage
+    # These are examples - customize for your service needs
     collections:
       - name: "thoughts"
         description: "Agent thoughts and outputs"
@@ -53,14 +100,192 @@ spec:
             type: "descending"
           - fields: ["pulse_id"]
             type: "ascending"
+      
+      - name: "metrics"
+        description: "Performance and usage metrics"
+        schemaHint:
+          metric_name: "string"
+          value: "number"
+          timestamp: "datetime"
+          tags: "object"
+        indexes:
+          - fields: ["metric_name", "timestamp"]
+            type: "compound"
+      
+      - name: "cache"
+        description: "Temporary cached data"
+        schemaHint:
+          key: "string"
+          value: "object"
+          cached_at: "datetime"
+          ttl: "number"
+        indexes:
+          - fields: ["key"]
+            type: "ascending"
+            unique: true
     
     # Collections from other services this service needs to access
+    # These are examples - customize for your service needs
     accessRequests:
       - collection: "heart-pulse-service.pulses"
         permission: "read"
         reason: "Access pulse history for context"
-  
+      
+      # Example: Access another service's collection
+      # - collection: "validator-service.validations"
+      #   permission: "read"
+      #   reason: "Cross-reference with validation results"
+
+  # Communication configuration
+  communication:
+    # gRPC settings
+    grpc:
+      maxConcurrentStreams: 100
+      keepaliveTime: "30s"
+      keepaliveTimeout: "10s"
+    
+    # Pub-Sub configuration for async coordination
+    # Enables event-driven communication for loose coupling
+    pubsub:
+      enabled: true
+      # Topics this service publishes to
+      publish:
+        - topic: "service.events"
+          description: "Service lifecycle and task events"
+        - topic: "task.completed"
+          description: "Task completion notifications"
+      
+      # Topics this service subscribes to
+      subscribe:
+        - topic: "orchestration.commands"
+          description: "Commands from aol-core orchestrator"
+        - topic: "task.requests"
+          description: "Incoming task requests"
+      
+      # Event schemas for type-safe messaging
+      eventSchemas:
+        TaskCompleted:
+          task_id: "string"
+          service: "string"
+          result: "object"
+          timestamp: "datetime"
+          success: "boolean"
+        
+        TaskRequest:
+          task_id: "string"
+          source_service: "string"
+          payload: "object"
+          priority: "int"
+
+  # Integration hooks for external APIs/tools
+  # ==========================================
+  # To enable integrations:
+  # 1. Set enabled: true
+  # 2. Configure tools and/or llmAdapters below
+  # 3. Set integrations.enabled: true in config.yaml
+  # ==========================================
+  integrations:
+    enabled: false
+    
+    # Tool registry - pluggable external integrations
+    tools: []
+    # Example:
+    # - name: "websearch"
+    #   type: "external_api"
+    #   config:
+    #     endpoint: "${WEBSEARCH_ENDPOINT}"
+    #     timeout: 10
+    #   healthCheck:
+    #     enabled: true
+    #     interval: "30s"
+    
+    # LLM adapters for model swapping
+    llmAdapters: []
+    # Example:
+    # - name: "openai"
+    #   endpoint: "${OPENAI_ENDPOINT}"
+    #   model: "gpt-4o"
+    # - name: "anthropic"
+    #   endpoint: "${ANTHROPIC_ENDPOINT}"
+    #   model: "claude-3"
+
+  # Fault tolerance configuration
+  resilience:
+    # Retry policies - automatic retries with exponential backoff
+    retry:
+      maxAttempts: 3
+      initialDelay: "1s"
+      maxDelay: "10s"
+      multiplier: 2.0
+      retryableErrors:
+        - "UNAVAILABLE"
+        - "RESOURCE_EXHAUSTED"
+        - "DEADLINE_EXCEEDED"
+    
+    # Circuit breaker settings - prevents cascading failures
+    circuitBreaker:
+      enabled: true
+      threshold: 5
+      timeout: "60s"
+      halfOpenRequests: 3
+    
+    # Timeout settings
+    timeout:
+      default: "30s"
+      streaming: "300s"
+
+  # Health check configuration
+  health:
+    # HTTP health endpoint settings
+    http:
+      path: "/health"
+      interval: "10s"
+      timeout: "5s"
+    
+    # Heartbeat for orchestration pulses
+    # Sends periodic health updates to aol-core
+    heartbeat:
+      enabled: true
+      interval: "10s"
+      timeout: "5s"
+    
+    # Readiness probe - indicates service is ready to accept traffic
+    readiness:
+      path: "/ready"
+      initialDelay: "5s"
+      period: "10s"
+    
+    # Liveness probe - indicates service is alive
+    liveness:
+      path: "/health"
+      initialDelay: "10s"
+      period: "30s"
+
+  # Observability hooks
+  monitoring:
+    # Distributed tracing (OpenTelemetry)
+    tracing:
+      enabled: true
+      samplingRate: 0.1
+      propagation: "w3c"
+    
+    # Prometheus metrics
+    metrics:
+      enabled: true
+      path: "/metrics"
+      labels:
+        - "service"
+        - "method"
+        - "status"
+    
+    # Structured logging
+    logging:
+      level: "INFO"
+      format: "json"
+      includeTraceId: true
+
+  # Resource requirements
   resources:
     cpu: "1000m"
     memory: "1Gi"
-
+    replicas: 1

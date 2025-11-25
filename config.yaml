@@ -1,9 +1,22 @@
-# Agent configuration
-# This file should be customized for your specific agent
+# AOL Service Configuration
+# This file configures runtime behavior for your service
+# Customize values based on your service's needs
 
-# Data client configuration
+# Service identity
+service:
+  name: "aol-service"
+  version: "1.0.0"
+  kind: "AOLService"
+
+# Data client configuration (brokered persistence)
+# ================================================
+# To enable data storage:
+# 1. Set enabled: true below
+# 2. Set dataRequirements.enabled: true in manifest.yaml
+# 3. Uncomment knowledge-db dependency in manifest.yaml
+# ================================================
 dataClient:
-  enabled: false  # Set to true if your agent needs data storage
+  enabled: false  # Set to true to enable data storage
   aolCoreEndpoint: "aol-core:50051"
   databaseEndpoint: "knowledge-db:8084"  # Direct connection (temporary)
   cacheEnabled: true
@@ -12,8 +25,181 @@ dataClient:
   timeout: 30
   retryAttempts: 3
   retryDelay: 1
+  # Namespace isolation - collections are prefixed with service name
+  namespace: "${SERVICE_NAME}"
 
+# Pub-Sub configuration (async coordination)
+# Enables event-driven communication for loose coupling
+pubsub:
+  enabled: true
+  # Event bus endpoint (via aol-core)
+  eventBusEndpoint: "aol-core:50051"
+  # Local queue settings
+  maxQueueSize: 1000
+  processTimeout: 30
+  # Subscription settings
+  subscriptions:
+    maxConcurrent: 10
+    ackTimeout: 30
+    retryOnFailure: true
+    maxRetries: 3
+
+# Communication settings
+communication:
+  # gRPC client settings
+  grpc:
+    maxConcurrentStreams: 100
+    keepaliveTime: 30000  # ms
+    keepaliveTimeout: 10000  # ms
+    permitWithoutCalls: true
+    maxRetries: 3
+    retryBackoff:
+      initial: 1000  # ms
+      max: 10000  # ms
+      multiplier: 2.0
+  
+  # HTTP client settings (for REST integrations)
+  http:
+    timeout: 30
+    maxConnections: 100
+    retries: 3
+
+# Resilience configuration
+# Circuit breakers and retries prevent cascading failures
+resilience:
+  # Circuit breaker - opens after threshold failures
+  circuitBreaker:
+    enabled: true
+    failureThreshold: 5
+    successThreshold: 3
+    timeout: 60  # seconds before trying again
+    halfOpenRequests: 3
+  
+  # Retry policy - automatic retries with exponential backoff
+  retry:
+    enabled: true
+    maxAttempts: 3
+    initialDelay: 1  # seconds
+    maxDelay: 10  # seconds
+    multiplier: 2.0
+    retryableStatusCodes:
+      - 503  # Service Unavailable
+      - 504  # Gateway Timeout
+      - 429  # Too Many Requests
+  
+  # Timeout settings
+  timeout:
+    default: 30  # seconds
+    discovery: 5  # seconds
+    health: 5  # seconds
+
+# Integration hooks
+# ==========================================
+# To enable integrations:
+# 1. Set enabled: true below
+# 2. Configure tools and/or llm adapters
+# 3. Set integrations.enabled: true in manifest.yaml
+# ==========================================
+integrations:
+  enabled: false
+  
+  # Tool configurations
+  tools: {}
+  # Example:
+  # websearch:
+  #   endpoint: "http://websearch-api:8080"
+  #   timeout: 10
+  #   apiKey: "${WEBSEARCH_API_KEY}"
+  #   healthCheck:
+  #     enabled: true
+  #     interval: 30
+  
+  # LLM adapter configuration
+  llm:
+    adapter: ""  # "openai", "anthropic", "local"
+    # OpenAI settings (uncomment and configure as needed)
+    # openai:
+    #   endpoint: "https://api.openai.com/v1"
+    #   model: "gpt-4o"
+    #   apiKey: "${OPENAI_API_KEY}"
+    # Anthropic settings (uncomment and configure as needed)
+    # anthropic:
+    #   endpoint: "https://api.anthropic.com/v1"
+    #   model: "claude-3-sonnet-20240229"
+    #   apiKey: "${ANTHROPIC_API_KEY}"
+
+# Health & Lifecycle
+# Health checks and lifecycle hooks for orchestration
+health:
+  # Heartbeat configuration - sends pulses to aol-core
+  heartbeat:
+    enabled: true
+    interval: 10  # seconds
+    timeout: 5  # seconds
+  
+  # Health check endpoints
+  endpoints:
+    health: "/health"
+    ready: "/ready"
+    live: "/live"
+  
+  # Lifecycle hooks - called during service lifecycle
+  lifecycle:
+    gracefulShutdownTimeout: 30  # seconds
+    preStopDelay: 5  # seconds
+
+# Monitoring & Observability
+# Tracing, metrics, and logging configuration
 monitoring:
-  tracingEnabled: false
+  # Distributed tracing (OpenTelemetry)
+  # Set tracingEnabled: true to enable distributed tracing
+  tracingEnabled: false  # Set to true to enable tracing
   metricsEnabled: true
   logLevel: "INFO"
+  
+  # Tracing configuration (OpenTelemetry)
+  # Only used if tracingEnabled: true
+  tracing:
+    endpoint: "${JAEGER_ENDPOINT}"
+    samplingRate: 0.1
+    propagation: "w3c"
+  
+  # Metrics configuration (Prometheus)
+  metrics:
+    endpoint: "/metrics"
+    pushGateway: ""  # Optional push gateway for batch jobs
+    customLabels:
+      environment: "${ENVIRONMENT:-development}"
+  
+  # Logging configuration
+  logging:
+    format: "json"
+    includeTraceId: true
+    includeServiceInfo: true
+
+# Discovery configuration
+# Service registration and discovery settings
+discovery:
+  # Consul settings (for self-registration)
+  consul:
+    host: "${CONSUL_HTTP_ADDR:-consul-server:8500}"
+    token: "${CONSUL_TOKEN:-}"
+    datacenter: "dc1"
+  
+  # aol-core settings (for service discovery)
+  # aol-core reads from Consul and provides discovery API
+  aolCore:
+    endpoint: "${AOL_CORE_ENDPOINT:-http://aol-core:8080}"
+    timeout: 5
+    cacheEnabled: true
+    cacheTTL: 30
+
+# Schema validation
+# Request/response validation settings
+validation:
+  enabled: true
+  strictMode: false  # If true, reject unknown fields
+  # JSON schema paths for request/response validation
+  schemas:
+    request: ""
+    response: ""

@@ -15,64 +15,52 @@ All service types follow the same structure and patterns, making it easy to buil
 
 ## 🆕 Architecture Update (2025)
 
-The template has been updated to match the **new self-contained architecture**:
+The template implements the **comprehensive AOL service configuration** for multi-agent collaboration:
 
-- ✅ **Self-contained utilities** - Each service has its own `utils/` folder (no shared dependencies)
-- ✅ **Direct Consul registration** - Services register directly with Consul
-- ✅ **aol-core discovery** - Services discover other services via aol-core API
-- ✅ **Proper folder structure** - `service/`, `utils/`, `proto/`, `sidecar/` folders
-- ✅ **Complete independence** - Each service is fully self-contained
-- ✅ **Service-agnostic** - Works for agents, tools, plugins, and general services
+- ✅ **Service Registration & Discovery** - Consul-based auto-registration with aol-core discovery
+- ✅ **Communication Interfaces** - gRPC/HTTP with health checks and structured messaging
+- ✅ **Data Brokering** - Namespace-isolated collections via brokered client
+- ✅ **Integration Hooks** - Tool dependencies, LLM adapters, and pluggable APIs
+- ✅ **Loose Coupling Enablers** - Event-driven pub-sub and circuit breakers
+- ✅ **Lifecycle Management** - Heartbeats, hooks, and graceful shutdown
+- ✅ **Observability** - Metrics, tracing, and structured logging
 
 ## Architecture Overview
 
-This template follows the **loosely coupled microservices architecture** designed for **multi-agent systems** where each service is completely independent:
+This template follows the **loosely coupled microservices architecture** designed for **multi-agent systems**:
 
-- **Self-contained**: Each service has its own `utils/` folder with all utilities
-- **Direct registration**: Services register directly with Consul on startup
-- **Centralized discovery**: Services discover other services via aol-core's Service Discovery API
-- **No shared files**: All utilities are duplicated in each service for complete independence
-- **Multi-agent ready**: Supports agents, tools, plugins, and services working together
-
-### Service Registration & Discovery Pattern
-
-**Important**: This pattern is the SAME for ALL services (agents, tools, plugins, services):
-
-1. **Register WITH Consul** (Direct)
-   - Each service registers itself with Consul using `consul.Consul()` client
-   - Consul is the central service registry
-   - Environment variable: `CONSUL_HTTP_ADDR` (default: `consul-server:8500`)
-
-2. **Discover OTHER services VIA aol-core** (Indirect)
-   - aol-core reads from Consul and provides discovery API
-   - **aol-core is the SAME instance for everyone** - it manages all services
-   - Services use `AOLServiceDiscoveryClient` to query aol-core
-   - Environment variable: `AOL_CORE_ENDPOINT` (default: `http://aol-core:8080`)
-
-3. **aol-core Management**
-   - aol-core is the central management service
-   - It discovers services from Consul
-   - It provides service discovery API (`/api/discovery/{service_name}`)
-   - It manages routing, health checks, metrics, and data access
-   - **Every service uses the same aol-core instance**
-
-**Example Flow:**
 ```
-Your Service → Registers with Consul → aol-core reads Consul → Other services query aol-core
+                    ┌─────────────────────────────────────────────┐
+                    │              AOL-Core                       │
+                    │  (Central Orchestration & Discovery)        │
+                    │                                             │
+                    │  ┌─────────┐  ┌─────────┐  ┌─────────┐    │
+                    │  │Discovery│  │EventBus │  │ Router  │    │
+                    │  │   API   │  │ (PubSub)│  │ (gRPC)  │    │
+                    │  └────┬────┘  └────┬────┘  └────┬────┘    │
+                    └───────┼────────────┼───────────┼──────────┘
+                            │            │           │
+          ┌─────────────────┼────────────┼───────────┼─────────────────┐
+          │                 │            │           │                 │
+    ┌─────▼─────┐     ┌─────▼─────┐ ┌────▼────┐ ┌────▼────┐     ┌──────▼─────┐
+    │  Agent 1  │     │  Agent 2  │ │  Tool 1 │ │  Tool 2 │     │  Plugin 1  │
+    │(AOLAgent) │     │(AOLAgent) │ │(AOLTool)│ │(AOLTool)│     │(AOLPlugin) │
+    └───────────┘     └───────────┘ └─────────┘ └─────────┘     └────────────┘
+          │                 │            │           │                 │
+          └─────────────────┴────────────┴───────────┴─────────────────┘
+                                         │
+                                   ┌─────▼─────┐
+                                   │  Consul   │
+                                   │ (Registry)│
+                                   └───────────┘
 ```
 
-### Multi-Agent System Context
+### Key Patterns
 
-This template is designed for building **AI multi-agent systems** that require:
-
-- **Agent Orchestration** - AOL Core coordinates agents, tools, and plugins
-- **Service Discovery** - Agents find and communicate with each other
-- **Data Sharing** - Agents share knowledge and context through collections
-- **Monitoring & Observability** - Track agent actions, health, and workflows
-- **Tool Integration** - Agents access external APIs and specialized tools
-- **Memory & Knowledge** - Persistent storage for agent context and learning
-
-See `docs/multi-agent system-need.md` for more details on multi-agent system requirements.
+1. **Register WITH Consul** (Direct) - All services register themselves
+2. **Discover VIA aol-core** (Indirect) - Services find each other through aol-core
+3. **Communicate via Events** (Loose Coupling) - Pub-sub messaging through event bus
+4. **Store via Brokered Client** (Isolation) - Namespaced data access
 
 ## Template Structure
 
@@ -80,34 +68,37 @@ See `docs/multi-agent system-need.md` for more details on multi-agent system req
 g2-aol-template/
 ├── service/                  # Service implementation
 │   ├── __init__.py
-│   └── main.py              # Main service implementation (Process method)
+│   └── main.py              # Main service with lifecycle hooks
 ├── utils/                    # Self-contained utilities
 │   ├── __init__.py
 │   ├── consul_client.py     # Service discovery via aol-core
-│   ├── db_client.py         # Database client
-│   ├── grpc_client.py       # gRPC client with load balancing
+│   ├── db_client.py         # Brokered database client
+│   ├── grpc_client.py       # gRPC client with circuit breakers
+│   ├── event_bus.py         # Async pub-sub messaging
+│   ├── validators.py        # Schema and manifest validation
 │   ├── logging.py           # Structured logging
 │   └── tracing.py           # OpenTelemetry tracing
+├── sidecar/                  # Sidecar components
+│   ├── __init__.py
+│   ├── health.py            # Health reporter with heartbeats
+│   └── sidecar.py           # Tool executor & protocol translation
+├── integration/              # External integrations
+│   ├── __init__.py
+│   ├── base.py              # Base integration classes
+│   ├── llm_adapter.py       # LLM provider adapters
+│   └── tool_registry.py     # Dynamic tool registry
 ├── proto/                    # Protocol buffer definitions
 │   ├── common.proto
 │   ├── health.proto
 │   ├── metrics.proto
-│   └── service.proto        # Your service-specific proto
-├── sidecar/                  # Sidecar components
-│   ├── __init__.py
-│   ├── health.py
-│   └── sidecar.py
+│   └── service.proto
 ├── examples/                 # Example implementations
 │   ├── simple_storage_example.py
 │   └── shared_collection_example.py
 ├── docs/                     # Documentation
-│   ├── AOL-About.md
-│   ├── AOL-components.md
-│   ├── data_patterns.md
-│   └── ...
-├── config.yaml              # Runtime configuration
-├── manifest.yaml            # Service manifest (supports Agent/Tool/Plugin/Service)
-├── manifest-with-data.yaml  # Manifest with data storage enabled
+├── config.yaml              # Unified runtime configuration (all features)
+├── manifest.yaml            # Unified service manifest (all features)
+├── config-with-data.yaml    # Config reference example (data enabled)
 ├── Dockerfile               # Container definition
 ├── requirements.txt         # Python dependencies
 ├── create-service.sh        # Service creation script
@@ -117,8 +108,6 @@ g2-aol-template/
 ## Quick Start
 
 ### Option A: Automated Setup (Recommended)
-
-Use the interactive setup script:
 
 ```bash
 cd g2-aol-template
@@ -140,213 +129,348 @@ cd g2-aol-template
 ```
 
 The script will:
-- ✅ Create service directory in `app/my-new-service/`
-- ✅ Copy all template files
-- ✅ Set service type (kind) in manifest.yaml
-- ✅ Ask if you need data storage
-- ✅ Prompt for port numbers
-- ✅ Customize manifest and config
-- ✅ Provide next steps and docker-compose snippet
-
-**That's it!** Your service is ready to implement.
-
----
+- ✅ Create service directory
+- ✅ Copy template files including integration module
+- ✅ Ask about data storage, integrations, and pub-sub needs
+- ✅ Configure ports and service identity
+- ✅ Validate the generated manifest
+- ✅ Provide docker-compose snippet
 
 ### Option B: Manual Setup
 
-#### 1. Copy Template Files
-
+#### 1. Copy Template
 ```bash
-# Create your new service
 mkdir -p app/my-service
 cp -r g2-aol-template/* app/my-service/
 cd app/my-service
 ```
 
 #### 2. Customize Manifest
-
-Edit `manifest.yaml` (or use `manifest-with-data.yaml` if you need storage):
-
 ```yaml
 kind: "AOLService"  # Options: AOLAgent, AOLTool, AOLPlugin, AOLService
 apiVersion: "v1"
 metadata:
-  name: "my-service"  # Change this
+  name: "my-service"
   version: "1.0.0"
   labels:
-    service-type: "custom"
     role: "service"
 
 spec:
   endpoints:
-    grpc: "50070"     # Pick unused port
-    sidecar: "50120"
+    grpc: "50070"
     health: "50220"
     metrics: "8095"
+  
+  dependencies:
+    - service: "aol-core"
+      optional: false
+  
+  # Enable data storage if needed (set enabled: true)
+  dataRequirements:
+    enabled: false
+  
+  # Enable integrations if needed (set enabled: true)
+  integrations:
+    enabled: false
 ```
 
-#### 3. Configure Runtime
+#### 3. Implement Logic
+```python
+# service/main.py
+async def Process(self, request):
+    """Override this method with your service logic"""
+    
+    # Use event bus for async coordination
+    await self._publish_event(
+        topic="task.completed",
+        event_type="TaskCompleted",
+        payload={'result': 'success'}
+    )
+    
+    # Use data client for persistence
+    if self.data_client:
+        await self.data_client.insert('events', {
+            'timestamp': datetime.utcnow().isoformat(),
+            'data': request
+        })
+    
+    return {"status": "completed"}
+```
 
-Edit `config.yaml`:
+## Core Components
+
+### 1. Event Bus (Pub-Sub)
+
+The event bus enables loose coupling through async messaging:
+
+```python
+# Subscribe to events
+await self.event_bus.subscribe(
+    topic="orchestration.commands",
+    handler=self._handle_command
+)
+
+# Publish events
+await self._publish_event(
+    topic="task.completed",
+    event_type="TaskCompleted",
+    payload={'result': data},
+    priority=EventPriority.HIGH
+)
+```
+
+### 2. Health Reporter & Lifecycle Hooks
+
+Services have full lifecycle management:
+
+```python
+# Startup hook - initialize connections
+async def _on_startup(self):
+    await self.event_bus.start()
+    await self.sidecar.start()
+
+# Ready hook - subscribe to events  
+async def _on_ready(self):
+    await self.event_bus.subscribe(...)
+
+# Pre-stop hook - drain requests
+async def _on_pre_stop(self):
+    await asyncio.sleep(5)  # Grace period
+
+# Shutdown hook - cleanup
+async def _on_shutdown(self):
+    await self.event_bus.stop()
+    await self.data_client.close()
+```
+
+### 3. Tool Registry & Integrations
+
+Register and execute external tools:
+
+```python
+# Register a tool
+self.tool_registry.register(
+    name="websearch",
+    description="Web search API",
+    endpoint="http://search-api:8080/search"
+)
+
+# Execute tool
+result = await self.tool_registry.execute(
+    tool_name="websearch",
+    params={'query': 'AI agents'}
+)
+```
+
+### 4. LLM Adapters
+
+Swap LLM providers without changing code:
+
+```python
+from integration import create_llm_adapter
+
+# Create adapter (OpenAI, Anthropic, etc.)
+llm = create_llm_adapter(
+    provider='openai',
+    model='gpt-4o',
+    api_key=os.getenv('OPENAI_API_KEY')
+)
+
+# Use unified interface
+response = await llm.complete(
+    prompt="Analyze this text",
+    system_prompt="You are a helpful assistant"
+)
+```
+
+### 5. Data Client (Brokered Persistence)
+
+Namespace-isolated data access:
+
+```python
+# Request a collection
+await self.data_client.request_collection(
+    name="thoughts",
+    schema_hint={'timestamp': 'datetime', 'analysis': 'text'}
+)
+
+# Insert with automatic namespacing
+# Stored as: "my-service.thoughts"
+await self.data_client.insert('thoughts', {
+    'timestamp': datetime.utcnow().isoformat(),
+    'analysis': 'Some insight'
+})
+
+# Query with filters
+results = await self.data_client.query(
+    'thoughts',
+    filters={'timestamp': {'$gte': recent_time}},
+    limit=10,
+    sort={'timestamp': 'desc'}
+)
+```
+
+## Configuration Reference
+
+### manifest.yaml Schema
 
 ```yaml
-# Data client configuration (if needed)
+kind: "AOLService"  # AOLAgent, AOLTool, AOLPlugin, AOLService
+apiVersion: "v1"
+
+metadata:
+  name: "service-name"
+  version: "1.0.0"
+  labels: {}
+
+spec:
+  # Endpoints
+  endpoints:
+    grpc: "50050"
+    health: "50200"
+    metrics: "8080"
+  
+  # Dependencies
+  dependencies:
+    - service: "aol-core"
+      optional: false
+  
+  # Data storage
+  dataRequirements:
+    enabled: false
+    collections: []
+    accessRequests: []
+  
+  # Communication
+  communication:
+    grpc: {}
+    pubsub:
+      enabled: true
+      publish: []
+      subscribe: []
+  
+  # Integrations
+  integrations:
+    enabled: false
+    tools: []
+    llmAdapters: []
+  
+  # Resilience
+  resilience:
+    retry:
+      maxAttempts: 3
+    circuitBreaker:
+      enabled: true
+      threshold: 5
+  
+  # Health
+  health:
+    heartbeat:
+      enabled: true
+      interval: "10s"
+  
+  # Observability
+  monitoring:
+    tracing:
+      enabled: true
+    metrics:
+      enabled: true
+    logging:
+      level: "INFO"
+```
+
+### config.yaml Schema
+
+```yaml
+# Service identity
+service:
+  name: "service-name"
+  kind: "AOLService"
+
+# Data client
 dataClient:
   enabled: false
   aolCoreEndpoint: "aol-core:50051"
 
+# Pub-sub
+pubsub:
+  enabled: true
+  maxQueueSize: 1000
+
+# Resilience
+resilience:
+  circuitBreaker:
+    enabled: true
+    failureThreshold: 5
+  retry:
+    maxAttempts: 3
+
+# Health
+health:
+  heartbeat:
+    enabled: true
+    interval: 10
+
+# Monitoring
 monitoring:
   tracingEnabled: false
   metricsEnabled: true
   logLevel: "INFO"
+
+# Discovery
+discovery:
+  consul:
+    host: "consul-server:8500"
+  aolCore:
+    endpoint: "http://aol-core:8080"
 ```
 
-#### 4. Implement Logic
+## Service Types
 
-Edit `service/main.py` and implement your service logic in the `Process` method:
+| Type | Kind | Use Cases | Key Method |
+|------|------|-----------|------------|
+| Agent | AOLAgent | Reasoning, analysis, decisions | `Process()` → `Think()` |
+| Tool | AOLTool | API wrappers, utilities | `Process()` → `Execute()` |
+| Plugin | AOLPlugin | Extensions, add-ons | `Process()` → `Handle()` |
+| Service | AOLService | General microservices | `Process()` |
 
-```python
-async def Process(self, request):
-    """Override this method with your service logic"""
-    # For Agents: Implement reasoning/analysis logic
-    # For Tools: Implement execution logic
-    # For Plugins: Implement handling logic
-    # For Services: Implement processing logic
-    
-    result = {
-        "service": self.config.get('name'),
-        "request_id": request.get('request_id'),
-        "result": "Your logic here"
-    }
-    return result
+## API Endpoints
+
+Each service exposes these HTTP endpoints:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check (for Consul) |
+| `/ready` | GET | Readiness probe |
+| `/live` | GET | Liveness probe |
+| `/metrics` | GET | Prometheus metrics |
+| `/api/process` | POST | Main processing endpoint |
+| `/api/status` | GET | Service status and metrics |
+
+## Testing
+
+```bash
+# Build
+docker-compose build my-service
+
+# Start
+docker-compose up -d consul-server aol-core my-service
+
+# Verify health
+curl http://localhost:50220/health
+
+# Check readiness
+curl http://localhost:50220/ready
+
+# Check service status
+curl http://localhost:50220/api/status
+
+# Check Consul registration
+curl http://localhost:8500/v1/catalog/service/my-service
+
+# Check service discovery via aol-core
+curl http://localhost:8080/api/discovery/my-service
 ```
-
-#### 5. Add to Docker Compose
-
-Add your service to `app/docker-compose.yml`:
-
-```yaml
-my-service:
-  build:
-    context: .
-    dockerfile: ./my-service/Dockerfile
-  container_name: my-service
-  hostname: my-service
-  ports:
-    - "50070:50070"
-    - "50220:50220"
-    - "8095:8095"
-  networks:
-    - heart-pulse-network
-  depends_on:
-    - consul-server
-    - aol-core
-  environment:
-    - CONSUL_HTTP_ADDR=consul-server:8500
-    - AOL_CORE_ENDPOINT=http://aol-core:8080
-    - HEALTH_PORT=50220
-```
-
-## Data Storage Integration
-
-If your service needs to store data:
-
-### 1. Declare Data Requirements
-
-Use `manifest-with-data.yaml` as reference and add to `manifest.yaml`:
-
-```yaml
-spec:
-  dataRequirements:
-    enabled: true
-    collections:
-      - name: "my_data"
-        schemaHint:
-          timestamp: "datetime"
-          value: "number"
-        indexes:
-          - fields: ["timestamp"]
-            type: "ascending"
-```
-
-### 2. Enable Data Client
-
-In `config.yaml`:
-
-```yaml
-dataClient:
-  enabled: true
-  aolCoreEndpoint: "aol-core:50051"
-```
-
-### 3. Use Data Client
-
-The template `service/main.py` already includes data client usage:
-
-```python
-# In your Process method:
-async def Process(self, request):
-    # Store data
-    if self.data_client:
-        await self.data_client.insert('my_data', {
-            'timestamp': datetime.utcnow().isoformat(),
-            'value': 123
-        })
-    
-    # Query data
-    if self.data_client:
-        results = await self.data_client.query(
-            'my_data',
-            filters={'value': {'$gt': 100}},
-            limit=10
-        )
-```
-
-## Key Architectural Patterns
-
-### Service Discovery
-
-**Registration**: Services register directly with Consul (same for all services):
-```python
-# Register WITH Consul directly
-consul_host = os.getenv('CONSUL_HTTP_ADDR', 'consul-server:8500').split(':')[0]
-consul_port = int(os.getenv('CONSUL_HTTP_ADDR', 'consul-server:8500').split(':')[1])
-self.consul_client = consul.Consul(host=consul_host, port=consul_port)
-self.consul_client.agent.service.register(...)
-```
-
-**Discovery**: Services discover OTHER services via aol-core (aol-core is same for everyone):
-```python
-# Discover OTHER services VIA aol-core
-# aol-core reads from Consul and provides discovery API
-aol_core_endpoint = os.getenv('AOL_CORE_ENDPOINT', 'http://aol-core:8080')
-self.discovery_client = AOLServiceDiscoveryClient(aol_core_endpoint)
-instances = await self.discovery_client.discover_service('service-name')
-```
-
-**Key Points:**
-- ✅ All services register with Consul directly
-- ✅ All services discover other services via aol-core
-- ✅ aol-core is the SAME instance for everyone
-- ✅ aol-core manages all services by reading from Consul
-
-### Self-Contained Utilities
-
-Each service has its own `utils/` folder with:
-- `consul_client.py` - Service discovery client
-- `db_client.py` - Database operations
-- `grpc_client.py` - gRPC with load balancing
-- `logging.py` - Structured logging
-- `tracing.py` - OpenTelemetry tracing
-
-### Health Checks
-
-Services expose HTTP health endpoints:
-```python
-@app.router.add_get('/health', self.health_handler)
-```
-
-Consul monitors these endpoints automatically.
 
 ## Best Practices
 
@@ -356,115 +480,52 @@ Consul monitors these endpoints automatically.
 - **Health:** 50200-50299
 - **Metrics:** 8080-8099
 
-### Service Naming
-- Use lowercase with hyphens: `my-service`
-- Be descriptive: `text-analyzer` not `service1`
-- Include type hint if helpful: `text-analyzer-agent`, `web-scraper-tool`
-
-### Service Types
-Choose the appropriate `kind` in `manifest.yaml`:
-- **AOLAgent** - AI reasoning, analysis, decision-making
-- **AOLTool** - External integrations, utilities, helpers
-- **AOLPlugin** - Extensible modules, add-ons
-- **AOLService** - General microservices
-
 ### Dependencies
-Always declare in `manifest.yaml`:
+Always declare in manifest:
 ```yaml
 dependencies:
   - service: "aol-core"
     optional: false
-  - service: "knowledge-db"  # If using data storage
+  - service: "knowledge-db"  # If using data
     optional: false
 ```
 
-### Health Checks
-Implement `/health` endpoint returning:
-```json
-{
-  "status": "healthy",
-  "service": "my-service"
-}
+### Event Topics
+Use consistent naming:
+- `service.lifecycle` - Service lifecycle events
+- `task.{service}` - Task requests for specific service
+- `task.completed` - Task completion notifications
+- `orchestration.commands` - Commands from aol-core
+
+### Circuit Breakers
+Enable for all external calls:
+```yaml
+resilience:
+  circuitBreaker:
+    enabled: true
+    threshold: 5
+    timeout: "60s"
 ```
-
-## Testing Your Service
-
-### 1. Build
-```bash
-cd app
-docker-compose build my-service
-```
-
-### 2. Start
-```bash
-docker-compose up -d consul-server aol-core my-service
-```
-
-### 3. Verify
-```bash
-# Check health
-curl http://localhost:50220/health
-
-# Check Consul registration
-curl http://localhost:8500/v1/catalog/service/my-service
-
-# Check metrics
-curl http://localhost:8095/metrics
-
-# Check service discovery via aol-core
-curl http://localhost:8080/api/discovery/my-service
-```
-
-## Service Types Explained
-
-### AOLAgent
-AI reasoning services that process information, make decisions, and generate responses.
-- **Use cases**: Text analysis, decision-making, reasoning, critique
-- **Example**: `critic-agent`, `synthesizer-agent`, `validator-agent`
-- **Method**: Override `Process()` to implement `Think()` logic
-
-### AOLTool
-External integrations and utilities that provide specific functionality.
-- **Use cases**: API wrappers, data processors, external service integrations
-- **Example**: `web-scraper-tool`, `database-tool`, `email-tool`
-- **Method**: Override `Process()` to implement `Execute()` logic
-
-### AOLPlugin
-Extensible modules that add functionality to the system.
-- **Use cases**: Add-ons, extensions, optional features
-- **Example**: `auth-plugin`, `cache-plugin`, `analytics-plugin`
-- **Method**: Override `Process()` to implement `Handle()` logic
-
-### AOLService
-General microservices that don't fit the above categories.
-- **Use cases**: API gateways, data processors, background workers
-- **Example**: `api-gateway`, `event-processor`, `scheduler-service`
-- **Method**: Override `Process()` to implement your logic
-
-## Infrastructure Components
-
-This template includes infrastructure components in `infrastructure/`:
-
-- **[aol-core](infrastructure/aol-core/)** - Central orchestration service (required)
-- **[consul](infrastructure/consul/)** - Service registry configuration (required)
-
-See [infrastructure/README.md](infrastructure/README.md) for setup instructions.
 
 ## Documentation
 
-- **[Architecture Pattern](docs/ARCHITECTURE.md)**: How services register with Consul and discover via aol-core (same for all services)
-- **[Infrastructure Setup](infrastructure/README.md)**: How to set up aol-core and Consul
-- [Multi-Agent System Needs](docs/multi-agent%20system-need.md): Requirements for AI multi-agent systems
-- [AOL Components](docs/AOL-components.md): Detailed breakdown of system components
-- [Data Patterns](docs/data_patterns.md): Guide to using the Data Client and storage patterns
-- [Best Practices](docs/BEST_PRACTICES.md): Production-ready patterns and troubleshooting
-- [Logging Setup](docs/LOGGING.md): Guide to centralized logging with ELK and Filebeat
-- See examples in `examples/` directory
+- **[Architecture](docs/ARCHITECTURE.md)** - System architecture and patterns
+- **[Multi-Agent System](docs/multi-agent%20system-need.md)** - Requirements for AI systems
+- **[AOL Components](docs/AOL-components.md)** - Detailed component breakdown
+- **[Data Patterns](docs/data_patterns.md)** - Storage patterns and examples
+- **[Best Practices](docs/BEST_PRACTICES.md)** - Production patterns
+- **[Infrastructure](infrastructure/README.md)** - aol-core and Consul setup
+
+## Infrastructure
+
+Required infrastructure components in `infrastructure/`:
+
+- **[aol-core](infrastructure/aol-core/)** - Central orchestration (required)
+- **[consul](infrastructure/consul/)** - Service registry (required)
 
 ## Support
 
-For issues or questions:
-1. Check [`AOL-components.md`](AOL-components.md) requirements
-2. Review example implementations in `app/agents/`
-3. Verify `manifest.yaml` follows schema
-4. Check Consul UI for service registration: http://localhost:8500
+1. Check manifest validation output
+2. Review service logs: `docker-compose logs my-service`
+3. Verify Consul registration: http://localhost:8500
+4. Check aol-core discovery: http://localhost:8080/api/discovery
