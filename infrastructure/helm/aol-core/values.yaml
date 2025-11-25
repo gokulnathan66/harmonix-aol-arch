@@ -1,0 +1,304 @@
+# AOL Core Helm Chart Values
+# Multi-Platform Scalability Configuration
+# Based on: DoorDash's 80M RPS mesh migrations (2025)
+
+# =============================================================================
+# Global Configuration
+# =============================================================================
+global:
+  # Environment: development, staging, production
+  environment: development
+  
+  # Datacenter identifier for Consul
+  datacenter: heart-pulse-dc1
+  
+  # Image pull secrets (if using private registry)
+  imagePullSecrets: []
+
+# =============================================================================
+# AOL Core Configuration
+# =============================================================================
+aolCore:
+  # Replica count for high availability
+  replicaCount: 3
+  
+  image:
+    repository: aol-core
+    tag: "1.0.0"
+    pullPolicy: IfNotPresent
+  
+  # Resource limits for AOL Core
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "512Mi"
+    limits:
+      cpu: "2000m"
+      memory: "2Gi"
+  
+  # Port configuration
+  ports:
+    grpc: 50051
+    health: 50201
+    metrics: 9090
+  
+  # Health check configuration
+  healthCheck:
+    interval: 30s
+    timeout: 5s
+    unhealthyThreshold: 3
+  
+  # Auto-scaling configuration
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+    # Custom metrics for agent-aware scaling
+    customMetrics:
+      - name: active_workflows
+        targetValue: 50
+      - name: agent_queue_depth
+        targetValue: 100
+  
+  # Pod disruption budget
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 2
+  
+  # Node selector and tolerations
+  nodeSelector: {}
+  tolerations: []
+  affinity:
+    # Prefer spreading across availability zones
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                    - aol-core
+            topologyKey: topology.kubernetes.io/zone
+
+# =============================================================================
+# Consul Configuration (Service Mesh)
+# =============================================================================
+consul:
+  enabled: true
+  
+  global:
+    name: consul
+    datacenter: heart-pulse-dc1
+    
+    # Enable service mesh with mTLS
+    tls:
+      enabled: true
+      enableAutoEncrypt: true
+      verify: true
+    
+    # Enable ACLs in production
+    acls:
+      manageSystemACLs: false  # Set to true in production
+  
+  # Consul server configuration
+  server:
+    replicas: 3
+    bootstrapExpect: 3
+    storage: 10Gi
+    storageClass: null  # Use default storage class
+    
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "256Mi"
+      limits:
+        cpu: "2000m"
+        memory: "2Gi"
+    
+    # Enable anti-affinity for HA
+    affinity: |
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app: {{ template "consul.name" . }}
+                release: "{{ .Release.Name }}"
+                component: server
+            topologyKey: kubernetes.io/hostname
+  
+  # Consul Connect (service mesh)
+  connectInject:
+    enabled: true
+    default: false  # Opt-in for services
+    
+    # Transparent proxy for automatic traffic capture
+    transparentProxy:
+      defaultEnabled: true
+    
+    # Metrics for observability
+    metrics:
+      defaultEnabled: true
+      defaultPrometheusScrapePort: 20200
+      defaultPrometheusScrapePath: "/metrics"
+  
+  # Consul UI
+  ui:
+    enabled: true
+    service:
+      type: ClusterIP
+
+# =============================================================================
+# Agent Configuration
+# =============================================================================
+agents:
+  # Default agent configuration
+  defaults:
+    resources:
+      requests:
+        cpu: "250m"
+        memory: "256Mi"
+      limits:
+        cpu: "1000m"
+        memory: "1Gi"
+    
+    # Enable Consul Connect sidecar
+    consulConnect:
+      enabled: true
+    
+    # Health management
+    healthManagement:
+      autoRecoveryEnabled: true
+      lazyDetectionEnabled: true
+      lazyThreshold: 0.1
+      dominanceThreshold: 0.5
+  
+  # Agent auto-scaling
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+
+# =============================================================================
+# Event Store Configuration
+# =============================================================================
+eventStore:
+  # Maximum events to store in memory
+  maxEvents: 10000
+  
+  # Redis backend for distributed event store
+  redis:
+    enabled: false
+    host: redis-master
+    port: 6379
+  
+  # Kafka integration for high-volume events
+  kafka:
+    enabled: false
+    brokers: []
+    topic: aol-events
+
+# =============================================================================
+# Workflow Engine Configuration
+# =============================================================================
+workflow:
+  # Enable LangGraph-style workflow engine
+  enabled: true
+  
+  # Default workflow timeout
+  defaultTimeoutSeconds: 300
+  
+  # Parallel execution settings
+  parallelExecution:
+    maxConcurrency: 10
+    workerCount: 4
+  
+  # Checkpoint storage
+  checkpointStorage:
+    type: memory  # memory, redis, s3
+    s3:
+      bucket: ""
+      prefix: "aol-checkpoints/"
+
+# =============================================================================
+# Observability Configuration
+# =============================================================================
+observability:
+  # Tracing with OpenTelemetry
+  tracing:
+    enabled: true
+    endpoint: "http://jaeger-collector:4317"
+    samplingRate: 1.0
+  
+  # Metrics with Prometheus
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 15s
+  
+  # Logging
+  logging:
+    level: INFO
+    format: json
+    # Send logs to external system
+    externalSink:
+      enabled: false
+      type: elasticsearch
+      endpoint: ""
+
+# =============================================================================
+# Security Configuration
+# =============================================================================
+security:
+  # mTLS between services
+  mtls:
+    enabled: true
+  
+  # Pod security context
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+  
+  # Container security context
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+  
+  # Network policies
+  networkPolicy:
+    enabled: true
+    # Allow only from within namespace by default
+    ingressRules: []
+    egressRules: []
+
+# =============================================================================
+# Service Account
+# =============================================================================
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# =============================================================================
+# Ingress Configuration
+# =============================================================================
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: aol.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+

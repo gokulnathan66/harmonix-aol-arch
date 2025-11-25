@@ -1,0 +1,31 @@
+apiVersion: v2
+name: aol-core
+description: AOL (Agent Orchestration Layer) Core Helm Chart for Kubernetes
+version: 1.0.0
+appVersion: "1.0.0"
+type: application
+
+keywords:
+  - aol
+  - multi-agent
+  - orchestration
+  - consul
+  - grpc
+  - ai-agents
+
+home: https://github.com/your-org/harmonix-aol-arch
+
+maintainers:
+  - name: AOL Team
+    email: aol-team@example.com
+
+dependencies:
+  - name: consul
+    version: "1.3.0"
+    repository: "https://helm.releases.hashicorp.com"
+    condition: consul.enabled
+
+annotations:
+  category: AI/ML Infrastructure
+  licenses: Apache-2.0
+

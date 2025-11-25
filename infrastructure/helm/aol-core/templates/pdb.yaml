@@ -1,0 +1,14 @@
+{{- if .Values.aolCore.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "aol-core.fullname" . }}
+  labels:
+    {{- include "aol-core.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.aolCore.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "aol-core.selectorLabels" . | nindent 6 }}
+{{- end }}
+

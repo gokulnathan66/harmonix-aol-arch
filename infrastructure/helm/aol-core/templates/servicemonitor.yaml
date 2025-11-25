@@ -1,0 +1,21 @@
+{{- if and .Values.observability.metrics.enabled .Values.observability.metrics.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "aol-core.fullname" . }}
+  labels:
+    {{- include "aol-core.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "aol-core.selectorLabels" . | nindent 6 }}
+  endpoints:
+    - port: metrics
+      interval: {{ .Values.observability.metrics.serviceMonitor.interval }}
+      path: /metrics
+      scheme: http
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+{{- end }}
+

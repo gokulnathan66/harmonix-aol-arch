@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "aol-core.fullname" . }}-config
+  labels:
+    {{- include "aol-core.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    kind: "AOLCore"
+    apiVersion: "v1"
+    metadata:
+      name: "aol-core"
+      version: "{{ .Chart.AppVersion }}"
+      labels:
+        aol.service.type: "core"
+        environment: "{{ .Values.global.environment }}"
+        datacenter: "{{ .Values.global.datacenter }}"
+
+    spec:
+      gateway:
+        host: "0.0.0.0"
+        port: {{ .Values.aolCore.ports.grpc }}
+        maxConcurrentStreams: 1000
+        keepAliveTime: "30s"
+        keepAliveTimeout: "10s"
+
+      registry:
+        type: "consul"
+        healthCheckInterval: "{{ .Values.aolCore.healthCheck.interval }}"
+        deregisterAfter: "1m"
+
+      consul:
+        host: "consul-server"
+        port: 8500
+        datacenter: "{{ .Values.global.datacenter }}"
+
+      monitoring:
+        healthPort: {{ .Values.aolCore.ports.health }}
+        metricsPort: {{ .Values.aolCore.ports.metrics }}
+        tracingEnabled: {{ .Values.observability.tracing.enabled }}
+        {{- if .Values.observability.tracing.enabled }}
+        tracingEndpoint: "{{ .Values.observability.tracing.endpoint }}"
+        {{- end }}
+        logLevel: "{{ .Values.observability.logging.level }}"
+        logFormat: "{{ .Values.observability.logging.format }}"
+
+      # Health management configuration
+      healthManagement:
+        autoRecoveryEnabled: {{ .Values.agents.defaults.healthManagement.autoRecoveryEnabled }}
+        lazyDetectionEnabled: {{ .Values.agents.defaults.healthManagement.lazyDetectionEnabled }}
+        lazyThreshold: {{ .Values.agents.defaults.healthManagement.lazyThreshold }}
+        dominanceThreshold: {{ .Values.agents.defaults.healthManagement.dominanceThreshold }}
+
+      # Workflow engine configuration
+      workflow:
+        enabled: {{ .Values.workflow.enabled }}
+        defaultTimeoutSeconds: {{ .Values.workflow.defaultTimeoutSeconds }}
+        parallelExecution:
+          maxConcurrency: {{ .Values.workflow.parallelExecution.maxConcurrency }}
+          workerCount: {{ .Values.workflow.parallelExecution.workerCount }}
+
+      # Event store configuration
+      eventStore:
+        maxEvents: {{ .Values.eventStore.maxEvents }}
+        {{- if .Values.eventStore.redis.enabled }}
+        backend: "redis"
+        redis:
+          host: "{{ .Values.eventStore.redis.host }}"
+          port: {{ .Values.eventStore.redis.port }}
+        {{- else }}
+        backend: "memory"
+        {{- end }}
+
+      resources:
+        cpu: "{{ .Values.aolCore.resources.requests.cpu }}"
+        memory: "{{ .Values.aolCore.resources.requests.memory }}"
+

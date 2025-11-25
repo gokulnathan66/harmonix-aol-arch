@@ -1,0 +1,123 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "aol-core.fullname" . }}
+  labels:
+    {{- include "aol-core.labels" . | nindent 4 }}
+  annotations:
+    # Consul Connect injection
+    {{- if .Values.consul.enabled }}
+    consul.hashicorp.com/connect-inject: "true"
+    consul.hashicorp.com/connect-service: "aol-core"
+    consul.hashicorp.com/connect-service-port: "grpc"
+    {{- end }}
+spec:
+  {{- if not .Values.aolCore.autoscaling.enabled }}
+  replicas: {{ .Values.aolCore.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "aol-core.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "aol-core.selectorLabels" . | nindent 8 }}
+      annotations:
+        # Prometheus scraping
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.aolCore.ports.metrics }}"
+        prometheus.io/path: "/metrics"
+        {{- if .Values.consul.enabled }}
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "aol-core"
+        {{- end }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "aol-core.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.security.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.security.containerSecurityContext | nindent 12 }}
+          image: "{{ .Values.aolCore.image.repository }}:{{ .Values.aolCore.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.aolCore.image.pullPolicy }}
+          ports:
+            - name: grpc
+              containerPort: {{ .Values.aolCore.ports.grpc }}
+              protocol: TCP
+            - name: health
+              containerPort: {{ .Values.aolCore.ports.health }}
+              protocol: TCP
+            - name: metrics
+              containerPort: {{ .Values.aolCore.ports.metrics }}
+              protocol: TCP
+          env:
+            - name: ENVIRONMENT
+              value: {{ .Values.global.environment }}
+            - name: DATACENTER
+              value: {{ .Values.global.datacenter }}
+            - name: CONSUL_HTTP_ADDR
+              value: "consul-server:8500"
+            - name: GRPC_PORT
+              value: "{{ .Values.aolCore.ports.grpc }}"
+            - name: HEALTH_PORT
+              value: "{{ .Values.aolCore.ports.health }}"
+            {{- if .Values.observability.tracing.enabled }}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ .Values.observability.tracing.endpoint }}
+            - name: TRACING_ENABLED
+              value: "true"
+            {{- end }}
+            {{- if .Values.eventStore.redis.enabled }}
+            - name: REDIS_HOST
+              value: {{ .Values.eventStore.redis.host }}
+            - name: REDIS_PORT
+              value: "{{ .Values.eventStore.redis.port }}"
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: health
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.aolCore.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /app/config.yaml
+              subPath: config.yaml
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "aol-core.fullname" . }}-config
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.aolCore.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.aolCore.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.aolCore.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+

@@ -1,0 +1,61 @@
+{{- if .Values.security.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "aol-core.fullname" . }}
+  labels:
+    {{- include "aol-core.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "aol-core.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow traffic from within the namespace
+    - from:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.aolCore.ports.grpc }}
+        - protocol: TCP
+          port: {{ .Values.aolCore.ports.health }}
+        - protocol: TCP
+          port: {{ .Values.aolCore.ports.metrics }}
+    # Allow traffic from Prometheus for scraping
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: {{ .Values.aolCore.ports.metrics }}
+    {{- with .Values.security.networkPolicy.ingressRules }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  egress:
+    # Allow DNS
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow Consul
+    - to:
+        - podSelector:
+            matchLabels:
+              app: consul
+      ports:
+        - protocol: TCP
+          port: 8500
+        - protocol: TCP
+          port: 8502
+    # Allow other services in namespace
+    - to:
+        - podSelector: {}
+    {{- with .Values.security.networkPolicy.egressRules }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}
+
