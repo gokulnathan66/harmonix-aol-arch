@@ -98,7 +98,6 @@ g2-aol-template/
 ├── docs/                     # Documentation
 ├── config.yaml              # Unified runtime configuration (all features)
 ├── manifest.yaml            # Unified service manifest (all features)
-├── config-with-data.yaml    # Config reference example (data enabled)
 ├── Dockerfile               # Container definition
 ├── requirements.txt         # Python dependencies
 ├── create-service.sh        # Service creation script

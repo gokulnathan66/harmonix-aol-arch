@@ -8,7 +8,6 @@ This document explains how to configure your AOL service manifest and config fil
 |------|---------|--------------|----------|
 | `manifest.yaml` | Unified template manifest | Configurable | All services (enable/disable data as needed) |
 | `config.yaml` | Unified runtime config | Configurable | All services (enable/disable data as needed) |
-| `config-with-data.yaml` | Example reference | Enabled | Reference showing enabled data storage |
 
 ## Key Differences
 
@@ -31,11 +30,7 @@ This document explains how to configure your AOL service manifest and config fil
 - Clear comments showing how to enable data storage and tracing
 - All other features enabled (pub-sub, resilience, health, etc.)
 - Use for all services - enable/disable features as needed
-
-#### `config-with-data.yaml` (Reference Example)
-- Example showing data storage and tracing enabled
-- Use as reference when enabling these features
-- Same structure as unified config
+- Includes all configuration options with examples
 
 ## Feature Matrix
 

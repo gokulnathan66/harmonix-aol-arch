@@ -138,10 +138,8 @@ collections:
 
 | File | Purpose | When to Use |
 |------|---------|-------------|
-| `config.yaml` | Basic runtime configuration | Services without data storage |
-| `config-with-data.yaml` | Data-enabled configuration | Services that need persistence |
-| `manifest.yaml` | Basic service declaration | Services without data storage |
-| `manifest-with-data.yaml` | Full service + data declaration | Services with collections |
+| `config.yaml` | Unified runtime configuration | All services (enable features as needed) |
+| `manifest.yaml` | Unified service declaration | All services (enable features as needed) |
 | `agent.py` | Enhanced agent template | All new agents/services |
 | `sidecar.py` | Service sidecar | Health checks, metrics |
 

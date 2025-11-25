@@ -60,7 +60,7 @@ except Exception as e:
 
 ---
 
-### 2. **config-with-data.yaml** - Enhanced Configuration
+### 2. **config.yaml** - Unified Configuration
 
 **Improvements**:
 
@@ -306,7 +306,7 @@ logger.error("Failures requiring attention")
 | File | Lines Changed | Type | Impact |
 |------|---------------|------|--------|
 | `agent.py` | ~70 | Enhanced | Core improvements |
-| `config-with-data.yaml` | ~20 | Enhanced | Better docs |
+| `config.yaml` | ~200 | Unified | Combined config files |
 | `BEST_PRACTICES.md` | +200 | New | Documentation |
 | `README.md` | +20 | Enhanced | Discovery |
 
@@ -319,7 +319,7 @@ logger.error("Failures requiring attention")
 For users of this template:
 
 1. **Read BEST_PRACTICES.md** - Understand the patterns
-2. **Use config-with-data.yaml** - Start with production settings
+2. **Use config.yaml** - Enable features as needed (data, tracing, etc.)
 3. **Follow verification checklist** - Ensure correct setup
 4. **Reference examples/** - See real code patterns
 5. **Check troubleshooting** - When issues arise
