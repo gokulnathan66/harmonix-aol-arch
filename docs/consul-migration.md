@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the migration from Docker-based service discovery to Consul-based service discovery with gRPC load balancing and service mesh capabilities in the Heart-Pulse AOL system.
+This document describes the migration from Docker-based service discovery to Consul-based service discovery with gRPC load balancing and service mesh capabilities in the aol-core AOL system.
 
 ## Migration Summary
 
@@ -72,10 +72,10 @@ All services now register themselves with Consul on startup:
 - Ports: gRPC (50051), Health (50201), Metrics (9090)
 - Tags: `aol`, `core`, `orchestrator`
 
-### Heart-Pulse
-- Service Name: `heart-pulse`
+### aol-core
+- Service Name: `aol-core`
 - Ports: gRPC (50052), Health (50202), Metrics (8080)
-- Tags: `heart-pulse`, `orchestrator`
+- Tags: `aol-core`, `orchestrator`
 
 ### Agents (Critic, Validator)
 - Service Names: `critic-agent`, `validator-agent`
@@ -98,7 +98,7 @@ discovery:
 consul:
   host: "consul-server"
   port: 8500
-  datacenter: "heart-pulse-dc1"
+  datacenter: "aol-core-dc1"
   connect:
     enabled: true
 ```
@@ -190,7 +190,7 @@ Features:
 - [x] Create Consul registry module
 - [x] Update AOL Core to use Consul
 - [x] Create load-balanced gRPC client
-- [x] Update Heart-Pulse service
+- [x] Update aol-core service
 - [x] Update agent services
 
 ### Phase 3: Configuration ✅

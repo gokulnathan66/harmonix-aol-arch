@@ -48,7 +48,7 @@ aol-core:
   environment:
     - CONSUL_HTTP_ADDR=consul-server:8500
   networks:
-    - heart-pulse-network
+    - aol-core-network
   depends_on:
     - consul-server
 ```
@@ -88,7 +88,7 @@ Consul is the service registry where all services register themselves.
 
 The Consul configuration file is in `consul/config/consul-config.hcl`:
 
-- Datacenter: `heart-pulse-dc1`
+- Datacenter: `aol-core-dc1`
 - UI enabled: Yes
 - Service mesh (Consul Connect): Enabled
 - Script checks: Enabled
@@ -110,7 +110,7 @@ consul-server:
     - "8600:8600/udp"  # DNS
   command: agent -server -ui -client=0.0.0.0 -bootstrap-expect=1 -config-dir=/consul/config
   networks:
-    - heart-pulse-network
+    - aol-core-network
 ```
 
 ### Access

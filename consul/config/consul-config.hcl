@@ -1,5 +1,5 @@
 # Consul server configuration
-datacenter = "heart-pulse-dc1"
+datacenter = "aol-core-dc1"
 data_dir = "/consul/data"
 log_level = "INFO"
 

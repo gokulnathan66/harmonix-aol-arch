@@ -8,7 +8,7 @@
 
 AOL-multi-mesh-config.md : my aol system
 
-heart-pulse.md : continuous agent thinking system
+aol-core.md : continuous agent thinking system
 
 monitoring-system.md : full monitoring system
 

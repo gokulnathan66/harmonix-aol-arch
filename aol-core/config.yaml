@@ -1,7 +1,7 @@
 kind: "AOLCore"
 apiVersion: "v1"
 metadata:
-  name: "heart-pulse-aol"
+  name: "aol-core-aol"
   version: "1.0.0"
 
 spec:
@@ -18,7 +18,7 @@ spec:
   consul:
     host: "consul-server"
     port: 8500
-    datacenter: "heart-pulse-dc1"
+    datacenter: "aol-core-dc1"
     connect:
       enabled: true  # Enable Consul Connect for mTLS
   

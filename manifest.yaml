@@ -127,7 +127,7 @@ spec:
     # Collections from other services this service needs to access
     # These are examples - customize for your service needs
     accessRequests:
-      - collection: "heart-pulse-service.pulses"
+      - collection: "aol-core-service.pulses"
         permission: "read"
         reason: "Access pulse history for context"
       
