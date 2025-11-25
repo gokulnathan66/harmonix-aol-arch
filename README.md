@@ -1,6 +1,6 @@
 # g2-aol-template 
 
-Complete template for creating AOL-compliant services in the Pulse-AI multi-agent system architecture.
+Complete template for creating AOL-compliant services in the  multi-agent system architecture.
 
 ## 🎯 What This Template Is For
 
@@ -446,7 +446,123 @@ Each service exposes these HTTP endpoints:
 | `/api/process` | POST | Main processing endpoint |
 | `/api/status` | GET | Service status and metrics |
 
+## Development Setup
+
+### Prerequisites
+
+- Python 3.11+
+- Docker and Docker Compose
+- Git
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/Harmonix-aol-arch.git
+cd Harmonix-aol-arch
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Install development dependencies
+pip install pytest pytest-asyncio flake8
+```
+
+## Running Tests
+
+The repository includes a comprehensive test suite to ensure code quality and correctness.
+
+### Run All Tests
+
+```bash
+pytest tests/ -v
+```
+
+### Run Specific Tests
+
+```bash
+# Test validators
+pytest tests/test_validators.py -v
+
+# Test manifest validation
+pytest tests/test_manifest.py -v
+```
+
+### Run with Coverage
+
+```bash
+pytest tests/ --cov=utils --cov-report=html
+```
+
+### Linting
+
+```bash
+# Check for syntax errors
+flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+# Full linting
+flake8 . --count --max-complexity=10 --max-line-length=127 --statistics
+```
+
+## CI/CD
+
+This repository uses GitHub Actions for continuous integration. The CI pipeline automatically:
+
+- Runs on every push to `main` and `develop` branches
+- Runs on all pull requests
+- Executes linting checks with `flake8`
+- Runs the full test suite with `pytest`
+
+### CI Workflow
+
+The workflow is defined in [`.github/workflows/ci.yaml`](.github/workflows/ci.yaml) and includes:
+
+1. **Setup:** Python 3.11 environment
+2. **Dependencies:** Install requirements and test dependencies
+3. **Linting:** Check code quality and syntax
+4. **Testing:** Run all tests with verbose output
+
+### Local CI Simulation
+
+To simulate the CI environment locally:
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+pip install flake8 pytest pytest-asyncio
+
+# Run linting
+flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+# Run tests
+pytest tests/ -v
+```
+
 ## Testing
+
+```bash
+# Build
+docker-compose build my-service
+
+# Start
+docker-compose up -d consul-server aol-core my-service
+
+# Verify health
+curl http://localhost:50220/health
+
+# Check readiness
+curl http://localhost:50220/ready
+
+# Check service status
+curl http://localhost:50220/api/status
+
+# Check Consul registration
+curl http://localhost:8500/v1/catalog/service/my-service
+
+# Check service discovery via aol-core
+curl http://localhost:8080/api/discovery/my-service
+```
+
 
 ```bash
 # Build
@@ -521,6 +637,16 @@ Required infrastructure components in `infrastructure/`:
 
 - **[aol-core](infrastructure/aol-core/)** - Central orchestration (required)
 - **[consul](infrastructure/consul/)** - Service registry (required)
+
+## Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
+
+- Development setup and workflow
+- Code standards and best practices
+- Testing guidelines
+- Pull request process
+- Architecture guidelines
 
 ## Support
 

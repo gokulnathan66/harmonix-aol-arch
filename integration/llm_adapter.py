@@ -11,6 +11,11 @@ from abc import abstractmethod
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass, field
 
+try:
+    import aiohttp
+except ImportError:
+    aiohttp = None
+
 from integration.base import (
     BaseIntegration,
     IntegrationConfig,
