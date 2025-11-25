@@ -1,4 +1,4 @@
-# g2-aol-template 
+# harmonix-aol-arch 
 
 Complete template for creating AOL-compliant services in the  multi-agent system architecture.
 
@@ -65,7 +65,7 @@ This template follows the **loosely coupled microservices architecture** designe
 ## Template Structure
 
 ```
-g2-aol-template/
+harmonix-aol-arch/
 ├── service/                  # Service implementation
 │   ├── __init__.py
 │   └── main.py              # Main service with lifecycle hooks
@@ -109,7 +109,7 @@ g2-aol-template/
 ### Option A: Automated Setup (Recommended)
 
 ```bash
-cd g2-aol-template
+cd harmonix-aol-arch
 ./create-service.sh my-new-service [ServiceType]
 ```
 
@@ -140,7 +140,7 @@ The script will:
 #### 1. Copy Template
 ```bash
 mkdir -p app/my-service
-cp -r g2-aol-template/* app/my-service/
+cp -r harmonix-aol-arch/* app/my-service/
 cd app/my-service
 ```
 
