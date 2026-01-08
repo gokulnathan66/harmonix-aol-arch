@@ -21,7 +21,7 @@ opentelemetry-instrumentation-aiohttp-client==0.43b0
 aiohttp==3.9.1
 
 # Resilience & Retries
-tenacity==8.2.3
+tenacity==9.1.2
 
 # Optional: LLM Integration (uncomment if needed)
 # openai>=1.0.0
