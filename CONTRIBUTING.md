@@ -1,6 +1,6 @@
-# Contributing to Harmonix AOL Architecture
+# Contributing to harmonix AOL Architecture
 
-Thank you for your interest in contributing to the Harmonix AOL Architecture! This document provides guidelines and best practices for contributing to this repository.
+Thank you for your interest in contributing to the harmonix AOL Architecture! This document provides guidelines and best practices for contributing to this repository.
 
 ## Table of Contents
 
@@ -32,8 +32,8 @@ Before contributing, please:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/Harmonix-aol-arch.git
-cd Harmonix-aol-arch
+git clone https://github.com/gokulnathan66/harmonix-aol-arch.git
+cd harmonix-aol-arch
 
 # Install dependencies
 pip install -r requirements.txt

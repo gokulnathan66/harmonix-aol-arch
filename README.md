@@ -1,6 +1,14 @@
 # harmonix-aol-arch 
 
-Complete template for creating AOL-compliant services in the  multi-agent system architecture.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Code style: flake8](https://img.shields.io/badge/code%20style-flake8-000000.svg)](https://github.com/PyCQA/flake8)
+[![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![Security Policy](https://img.shields.io/badge/security-policy-blue.svg)](SECURITY.md)
+
+Complete template for creating AOL-compliant services in the multi-agent system architecture.
+
+> **Note**: This project is open source and welcomes contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## 🎯 What This Template Is For
 
@@ -458,8 +466,8 @@ Each service exposes these HTTP endpoints:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/Harmonix-aol-arch.git
-cd Harmonix-aol-arch
+git clone https://github.com/gokulnathan66/harmonix-aol-arch.git
+cd harmonix-aol-arch
 
 # Install dependencies
 pip install -r requirements.txt
@@ -647,6 +655,26 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
 - Testing guidelines
 - Pull request process
 - Architecture guidelines
+
+### How to Contribute
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Run tests and linting (`pytest tests/ -v` and `flake8 .`)
+5. Commit your changes (`git commit -m 'feat: Add amazing feature'`)
+6. Push to the branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
+
+See our [Code of Conduct](CODE_OF_CONDUCT.md) for community guidelines.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Security
+
+If you discover a security vulnerability, please follow our [Security Policy](SECURITY.md) and report it responsibly.
 
 ## Support
 
