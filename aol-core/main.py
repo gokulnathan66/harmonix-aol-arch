@@ -5,7 +5,6 @@ import grpc
 from concurrent import futures
 import signal
 import sys
-import os
 
 from registry.service_registry import ServiceRegistry
 from registry.consul_registry import (
@@ -26,7 +25,6 @@ from api.logging_service import setup_logging_service_api, LoggingService
 from api.metrics_service import setup_metrics_service_api, MetricsService
 from api.tracing_service import setup_tracing_service
 import yaml
-import logging
 from aiohttp import web
 import socket
 

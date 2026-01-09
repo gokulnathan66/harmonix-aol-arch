@@ -1,7 +1,6 @@
 """Proto Registry API - Serves proto files for all services"""
 
 import logging
-import os
 from pathlib import Path
 from aiohttp import web
 from typing import Dict, Optional

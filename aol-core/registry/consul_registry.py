@@ -3,9 +3,7 @@
 import consul
 import logging
 from typing import Dict, List, Optional
-from dataclasses import dataclass, asdict
-import json
-import socket
+from dataclasses import dataclass
 import os
 
 logger = logging.getLogger(__name__)

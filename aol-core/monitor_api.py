@@ -2,9 +2,7 @@
 
 import json
 import logging
-from typing import Dict, List
 from aiohttp import web, WSMsgType
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
 

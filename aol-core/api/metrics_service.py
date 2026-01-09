@@ -2,7 +2,7 @@
 
 import logging
 from aiohttp import web
-from typing import Dict, Any, List
+from typing import Dict, Any
 from prometheus_client import (
     Counter,
     Gauge,

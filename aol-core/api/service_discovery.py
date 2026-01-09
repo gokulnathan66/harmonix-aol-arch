@@ -1,7 +1,6 @@
 """Service Discovery API - Exposes Consul service discovery through aol-core"""
 
 import logging
-from typing import List, Dict, Optional
 from aiohttp import web
 from registry.consul_registry import ConsulServiceRegistry
 

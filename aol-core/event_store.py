@@ -5,7 +5,6 @@ from typing import Dict, List, Optional
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from enum import Enum
-import json
 
 
 class EventType(Enum):
@@ -57,7 +56,7 @@ class EventStore:
 
             # Keep only last max_events
             if len(self.events) > self.max_events:
-                self.events = self.events[-self.max_events :]
+                self.events = self.events[-self.max_events:]
 
             # Notify subscribers
             for queue in self.subscribers:

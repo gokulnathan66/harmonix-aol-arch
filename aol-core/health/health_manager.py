@@ -3,7 +3,6 @@
 import asyncio
 import aiohttp
 import logging
-from typing import Dict
 
 
 class HealthManager:

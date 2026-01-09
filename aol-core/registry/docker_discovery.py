@@ -4,7 +4,6 @@ import docker
 import asyncio
 import logging
 from typing import Dict
-import yaml
 import os
 from datetime import datetime
 import uuid
@@ -42,7 +41,7 @@ class DockerDiscovery:
                 self.logger.info(
                     f"Docker discovery initialized successfully using socket: {docker_socket}"
                 )
-                except Exception as e1:
+            except Exception as e1:
                 # Method 2: Try without version (let it auto-detect)
                 try:
                     self.docker_client = docker.DockerClient(base_url=base_url)
@@ -131,16 +130,6 @@ class DockerDiscovery:
     async def _discover_via_cli(self, label_prefix: str):
         """Discover services using Docker HTTP API directly via Unix socket"""
         try:
-            import json
-            import socket
-            import urllib.parse
-
-            docker_socket = (
-                self.config.get("spec", {})
-                .get("discovery", {})
-                .get("dockerSocket", "/var/run/docker.sock")
-            )
-
             # Get list of containers using Docker HTTP API
             containers = await self._docker_api_request(
                 "GET", "/containers/json?all=false"
@@ -195,7 +184,6 @@ class DockerDiscovery:
         """Make HTTP request to Docker API via Unix socket using aiohttp"""
         try:
             import aiohttp
-            import json
 
             docker_socket = (
                 self.config.get("spec", {})
@@ -268,7 +256,7 @@ class DockerDiscovery:
             if header_end == -1:
                 return None
 
-            body = response_str[header_end + 4 :]
+            body = response_str[header_end + 4:]
             headers = response_str[:header_end]
 
             # Check status code
@@ -291,9 +279,9 @@ class DockerDiscovery:
         """Register service from labels and port info"""
         try:
             # Extract port information from labels or ports
-            grpc_port = int(labels.get(f"aol.service.grpc_port", "0"))
-            health_port = int(labels.get(f"aol.service.health_port", "0"))
-            metrics_port = int(labels.get(f"aol.service.metrics_port", "0"))
+            grpc_port = int(labels.get("aol.service.grpc_port", "0"))
+            health_port = int(labels.get("aol.service.health_port", "0"))
+            metrics_port = int(labels.get("aol.service.metrics_port", "0"))
 
             # Extract ports from Docker port mappings
             exposed_ports = []

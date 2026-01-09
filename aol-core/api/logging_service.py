@@ -24,7 +24,7 @@ class LoggingService:
 
         # Keep buffer size manageable
         if len(self.log_buffer) > self.max_buffer_size:
-            self.log_buffer = self.log_buffer[-self.max_buffer_size :]
+            self.log_buffer = self.log_buffer[-self.max_buffer_size:]
 
         # Log to stdout (will be picked up by Filebeat)
         logger.info(f"Log ingested: {json.dumps(log_entry)}")
