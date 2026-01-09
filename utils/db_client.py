@@ -3,7 +3,6 @@ Database Client - Uses aol-core to discover database service
 """
 
 import aiohttp
-import json
 import logging
 from typing import List, Dict, Any, Optional
 from utils.consul_client import AOLServiceDiscoveryClient

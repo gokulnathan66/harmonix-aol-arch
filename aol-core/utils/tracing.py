@@ -4,7 +4,6 @@ import os
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.sdk.trace.export import ConsoleSpanExporter
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import Resource
 
@@ -23,8 +22,6 @@ def setup_tracing(config):
     # If tracing is disabled or no endpoint, use a no-op tracer provider
     if not tracing_enabled or not jaeger_endpoint:
         # Set a no-op tracer provider that does nothing
-        from opentelemetry.sdk.trace import TracerProvider
-
         provider = TracerProvider()
         trace.set_tracer_provider(provider)
         return trace.get_tracer(__name__)

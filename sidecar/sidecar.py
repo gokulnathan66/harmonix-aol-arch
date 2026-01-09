@@ -11,9 +11,9 @@ This sidecar provides:
 import asyncio
 import logging
 import time
-from typing import Dict, Any, Optional, List, Callable
+from typing import Dict, Any, Optional, Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
 import aiohttp
 import json
@@ -282,7 +282,7 @@ class ToolExecutor:
 
                     try:
                         data = await resp.json()
-                    except:
+                    except Exception:
                         data = await resp.text()
 
                     return {

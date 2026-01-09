@@ -12,12 +12,11 @@ This template implements the comprehensive AOL service requirements:
 
 import asyncio
 import os
-import sys
 import yaml
 import logging
 import socket
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 from aiohttp import web
 from opentelemetry import trace
 from prometheus_client import Counter, Histogram, Gauge
@@ -28,7 +27,7 @@ from utils.db_client import DatabaseClient
 from utils.consul_client import AOLServiceDiscoveryClient
 from utils.event_bus import EventBusClient, Event, EventPriority
 from utils.validators import validate_manifest, validate_config
-from sidecar.health import HealthReporter, HealthStatus
+from sidecar.health import HealthReporter
 from sidecar.sidecar import Sidecar
 from integration.tool_registry import ToolRegistry
 

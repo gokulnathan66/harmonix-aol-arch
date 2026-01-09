@@ -1,7 +1,6 @@
 """Prometheus metrics setup"""
 
-from prometheus_client import start_http_server, Counter, Gauge, Histogram
-import os
+from prometheus_client import start_http_server
 
 
 def setup_metrics(config):

@@ -9,7 +9,7 @@ automatic validation, retries, and metrics.
 import asyncio
 import logging
 import time
-from typing import Dict, Any, Optional, List, Callable, Union
+from typing import Dict, Any, Optional, List, Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -317,7 +317,7 @@ class ToolRegistry:
 
             try:
                 return await resp.json()
-            except:
+            except Exception:
                 return await resp.text()
 
     def _validate_params(

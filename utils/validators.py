@@ -9,7 +9,7 @@ for the AOL mesh.
 import os
 import yaml
 import logging
-from typing import Dict, Any, List, Optional, Union
+from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 from enum import Enum
 

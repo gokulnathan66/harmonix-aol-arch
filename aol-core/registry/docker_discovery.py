@@ -42,7 +42,7 @@ class DockerDiscovery:
                 self.logger.info(
                     f"Docker discovery initialized successfully using socket: {docker_socket}"
                 )
-            except Exception as e1:
+                except Exception as e1:
                 # Method 2: Try without version (let it auto-detect)
                 try:
                     self.docker_client = docker.DockerClient(base_url=base_url)
@@ -50,7 +50,7 @@ class DockerDiscovery:
                     self.logger.info(
                         f"Docker discovery initialized using socket (no version): {docker_socket}"
                     )
-                except Exception as e2:
+                except Exception:
                     # Method 3: Try with APIClient and wrap it
                     try:
                         api_client = docker.APIClient(base_url=base_url)
@@ -327,7 +327,7 @@ class DockerDiscovery:
                 "apiVersion": "v1",
                 "metadata": {
                     "name": service_name,
-                    "version": labels.get(f"aol.service.version", "1.0.0"),
+                    "version": labels.get("aol.service.version", "1.0.0"),
                     "labels": {k: v for k, v in labels.items() if k.startswith("aol.")},
                 },
                 "spec": {
@@ -370,9 +370,9 @@ class DockerDiscovery:
         """Register a service from container information"""
         try:
             # Extract port information from labels or container ports
-            grpc_port = int(labels.get(f"aol.service.grpc_port", "0"))
-            health_port = int(labels.get(f"aol.service.health_port", "0"))
-            metrics_port = int(labels.get(f"aol.service.metrics_port", "0"))
+            grpc_port = int(labels.get("aol.service.grpc_port", "0"))
+            health_port = int(labels.get("aol.service.health_port", "0"))
+            metrics_port = int(labels.get("aol.service.metrics_port", "0"))
 
             # If ports not in labels, try to extract from container exposed ports
             if grpc_port == 0 or health_port == 0 or metrics_port == 0:
@@ -413,7 +413,7 @@ class DockerDiscovery:
                 "apiVersion": "v1",
                 "metadata": {
                     "name": service_name,
-                    "version": labels.get(f"aol.service.version", "1.0.0"),
+                    "version": labels.get("aol.service.version", "1.0.0"),
                     "labels": {k: v for k, v in labels.items() if k.startswith("aol.")},
                 },
                 "spec": {
@@ -426,7 +426,6 @@ class DockerDiscovery:
             }
 
             # Get container IP
-            networks = container.attrs.get("NetworkSettings", {}).get("Networks", {})
             host = container.name  # Use container name as hostname
 
             from registry.service_registry import ServiceInstance

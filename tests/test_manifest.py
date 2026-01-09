@@ -2,7 +2,6 @@
 Tests for manifest.yaml validation
 """
 
-import pytest
 from utils.validators import validate_manifest
 
 

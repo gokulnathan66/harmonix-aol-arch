@@ -8,7 +8,6 @@ from tenacity import (
     retry_if_exception_type,
 )
 from typing import List, Optional, Dict
-import random
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta

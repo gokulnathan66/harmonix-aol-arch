@@ -189,7 +189,7 @@ class EventBusClient:
                 },
             ) as resp:
                 if resp.status == 200:
-                    logger.info(f"Registered with event broker")
+                    logger.info("Registered with event broker")
                 else:
                     logger.warning(f"Failed to register with broker: {resp.status}")
         except Exception as e:
@@ -204,7 +204,7 @@ class EventBusClient:
                 json={"service_name": self.service_name},
             ) as resp:
                 if resp.status == 200:
-                    logger.info(f"Deregistered from event broker")
+                    logger.info("Deregistered from event broker")
         except Exception as e:
             logger.warning(f"Could not deregister from event broker: {e}")
 
@@ -257,7 +257,7 @@ class EventBusClient:
                 else:
                     # Queue locally for retry
                     await self._event_queue.put(("publish", event))
-                    logger.warning(f"Failed to publish to broker, queued locally")
+                    logger.warning("Failed to publish to broker, queued locally")
         except Exception as e:
             # Queue locally for retry
             try:
@@ -484,7 +484,7 @@ class LocalEventBus:
         # Store in history
         self._event_history.append(event)
         if len(self._event_history) > self._max_history:
-            self._event_history = self._event_history[-self._max_history :]
+            self._event_history = self._event_history[-self._max_history:]
 
         # Dispatch to subscribers
         await self._dispatch(event)

@@ -12,7 +12,7 @@ import asyncio
 import logging
 from typing import Dict, Any, Optional, Callable, List
 from datetime import datetime
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 import aiohttp
 

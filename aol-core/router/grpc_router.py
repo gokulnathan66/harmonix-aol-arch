@@ -1,8 +1,6 @@
 """gRPC request router"""
 
-import grpc
 import logging
-from typing import Dict
 
 
 class GRPCRouter:

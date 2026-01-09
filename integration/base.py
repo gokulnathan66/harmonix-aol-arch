@@ -5,10 +5,9 @@ This module provides the foundation for building pluggable integrations
 that can be easily swapped without affecting service logic.
 """
 
-import asyncio
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum

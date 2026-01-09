@@ -5,7 +5,6 @@ This module provides adapters for different LLM providers, allowing
 services to swap between providers without changing service logic.
 """
 
-import asyncio
 import logging
 import os
 from abc import abstractmethod
@@ -20,7 +19,6 @@ except ImportError:
 from integration.base import (
     BaseIntegration,
     IntegrationConfig,
-    IntegrationResult,
     IntegrationError,
 )
 
@@ -217,8 +215,6 @@ class OpenAIAdapter(LLMAdapter):
         self, action: str, payload: Dict[str, Any], **kwargs
     ) -> LLMResponse:
         """Execute OpenAI API call"""
-        import aiohttp
-
         if action == "complete":
             return await self._complete(payload)
         elif action == "chat":
@@ -352,8 +348,6 @@ class AnthropicAdapter(LLMAdapter):
         self, action: str, payload: Dict[str, Any], **kwargs
     ) -> LLMResponse:
         """Execute Anthropic API call"""
-        import aiohttp
-
         if action in ("complete", "chat"):
             return await self._messages(payload)
         else:

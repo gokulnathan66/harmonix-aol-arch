@@ -2,14 +2,12 @@
 Tests for validators module
 """
 
-import pytest
 import yaml
 import tempfile
 import os
 from utils.validators import (
     ManifestValidator,
     ConfigValidator,
-    ValidationSeverity,
     validate_manifest,
     validate_config,
 )
