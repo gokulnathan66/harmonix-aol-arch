@@ -1,53 +1,55 @@
 """Structured logging setup"""
+
 import logging
 import json
 import sys
 import os
 
+
 def setup_logging(config):
     """Setup structured logging"""
-    log_config = config.get('spec', {}).get('logging', {})
-    level = log_config.get('level', 'INFO')
-    format_type = log_config.get('format', 'json')
-    
+    log_config = config.get("spec", {}).get("logging", {})
+    level = log_config.get("level", "INFO")
+    format_type = log_config.get("format", "json")
+
     logger = logging.getLogger()
     logger.setLevel(getattr(logging, level))
-    
+
     handler = logging.StreamHandler(sys.stdout)
-    
-    if format_type == 'json':
+
+    if format_type == "json":
         handler.setFormatter(JsonFormatter())
     else:
-        handler.setFormatter(logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        ))
-    
+        handler.setFormatter(
+            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        )
+
     logger.addHandler(handler)
-    
+
     return logging.getLogger(__name__)
+
 
 class JsonFormatter(logging.Formatter):
     """JSON log formatter"""
+
     def format(self, record):
         import socket
-        
+
         log_entry = {
-            'timestamp': self.formatTime(record, self.datefmt),
-            'level': record.levelname,
-            'logger': record.name,
-            'message': record.getMessage(),
-            'service_name': os.getenv('SERVICE_NAME', socket.gethostname()),
+            "timestamp": self.formatTime(record, self.datefmt),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+            "service_name": os.getenv("SERVICE_NAME", socket.gethostname()),
         }
-        
+
         # Add any extra fields from the log record
-        if hasattr(record, 'service_name'):
-            log_entry['service_name'] = record.service_name
-        if hasattr(record, 'service_type'):
-            log_entry['service_type'] = record.service_type
-        
+        if hasattr(record, "service_name"):
+            log_entry["service_name"] = record.service_name
+        if hasattr(record, "service_type"):
+            log_entry["service_type"] = record.service_type
+
         if record.exc_info:
-            log_entry['exception'] = self.formatException(record.exc_info)
-        
+            log_entry["exception"] = self.formatException(record.exc_info)
+
         return json.dumps(log_entry)
-
-
