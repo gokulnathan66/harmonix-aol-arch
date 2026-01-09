@@ -210,92 +210,66 @@ class ManifestValidator:
 
         return ValidationResult(valid=not has_errors, issues=issues)
 
-    def _validate_schema(
-        self,
-        data: Any,
-        schema: Dict[str, Any],
-        path: str,
-        issues: List[ValidationIssue],
-    ):
-        """Recursively validate data against schema"""
-        if not isinstance(data, dict):
-            return
-
-        # Check required fields
-        for field, spec in schema.items():
-            field_path = f"{path}.{field}" if path else field
-
-            if spec.get("required") and field not in data:
-                issues.append(
-                    ValidationIssue(
-                        path=field_path,
-                        message=f"Required field '{field}' is missing",
-                        severity=ValidationSeverity.ERROR,
-                        suggestion=f"Add '{field}' to the manifest",
-                    )
+    def _validate_field_required(
+        self, field: str, field_path: str, spec: Dict[str, Any],
+        data: Dict, issues: List[ValidationIssue]
+    ) -> bool:
+        """Validate required field"""
+        if spec.get("required") and field not in data:
+            issues.append(
+                ValidationIssue(
+                    path=field_path,
+                    message=f"Required field '{field}' is missing",
+                    severity=ValidationSeverity.ERROR,
+                    suggestion=f"Add '{field}' to the manifest",
                 )
-                continue
+            )
+            return False
+        return True
 
-            if field not in data:
-                continue
+    def _validate_field_type(self, field_path: str, value: Any, expected_type: type, issues: List[ValidationIssue]) -> bool:
+        """Validate field type"""
+        if expected_type and not isinstance(value, expected_type):
+            issues.append(
+                ValidationIssue(
+                    path=field_path,
+                    message=f"Expected {expected_type.__name__}, got {type(value).__name__}",
+                    severity=ValidationSeverity.ERROR,
+                    value=value,
+                )
+            )
+            return False
+        return True
 
-            value = data[field]
+    def _validate_field_value(self, field_path: str, value: Any, allowed_values: list, issues: List[ValidationIssue]):
+        """Validate field value"""
+        if allowed_values and value not in allowed_values:
+            issues.append(
+                ValidationIssue(
+                    path=field_path,
+                    message=f"Invalid value '{value}'. Allowed: {allowed_values}",
+                    severity=ValidationSeverity.ERROR,
+                    value=value,
+                    suggestion=f"Use one of: {', '.join(allowed_values)}",
+                )
+            )
 
-            # Type check
-            expected_type = spec.get("type")
-            if expected_type and not isinstance(value, expected_type):
+    def _validate_field_pattern(self, field_path: str, value: str, pattern: str, issues: List[ValidationIssue]):
+        """Validate field pattern"""
+        import re
+        if pattern and isinstance(value, str):
+            if not re.match(pattern, value):
                 issues.append(
                     ValidationIssue(
                         path=field_path,
-                        message=f"Expected {expected_type.__name__}, got {type(value).__name__}",
-                        severity=ValidationSeverity.ERROR,
+                        message=f"Value '{value}' does not match pattern {pattern}",
+                        severity=ValidationSeverity.WARNING,
                         value=value,
                     )
                 )
-                continue
 
-            # Value check
-            allowed_values = spec.get("values")
-            if allowed_values and value not in allowed_values:
-                issues.append(
-                    ValidationIssue(
-                        path=field_path,
-                        message=f"Invalid value '{value}'. Allowed: {allowed_values}",
-                        severity=ValidationSeverity.ERROR,
-                        value=value,
-                        suggestion=f"Use one of: {', '.join(allowed_values)}",
-                    )
-                )
-
-            # Pattern check
-            import re
-
-            pattern = spec.get("pattern")
-            if pattern and isinstance(value, str):
-                if not re.match(pattern, value):
-                    issues.append(
-                        ValidationIssue(
-                            path=field_path,
-                            message=f"Value '{value}' does not match pattern {pattern}",
-                            severity=ValidationSeverity.WARNING,
-                            value=value,
-                        )
-                    )
-
-            # Nested schema
-            nested_schema = spec.get("schema")
-            if nested_schema and isinstance(value, dict):
-                self._validate_schema(value, nested_schema, field_path, issues)
-
-            # List item schema
-            item_schema = spec.get("item_schema")
-            if item_schema and isinstance(value, list):
-                for i, item in enumerate(value):
-                    item_path = f"{field_path}[{i}]"
-                    if isinstance(item, dict):
-                        self._validate_schema(item, item_schema, item_path, issues)
-
-        # Check for unknown fields in strict mode
+    def _validate_unknown_fields(self, path: str, data: Dict, schema: Dict[str, Any], issues: List[ValidationIssue]):
+        """Validate unknown fields in strict mode"""
         if self.strict_mode:
             known_fields = set(schema.keys())
             actual_fields = set(data.keys())
@@ -309,6 +283,48 @@ class ManifestValidator:
                         severity=ValidationSeverity.WARNING,
                     )
                 )
+
+    def _validate_schema(
+        self,
+        data: Any,
+        schema: Dict[str, Any],
+        path: str,
+        issues: List[ValidationIssue],
+    ):
+        """Recursively validate data against schema"""
+        if not isinstance(data, dict):
+            return
+
+        for field, spec in schema.items():
+            field_path = f"{path}.{field}" if path else field
+
+            if not self._validate_field_required(field, field_path, spec, data, issues):
+                continue
+
+            if field not in data:
+                continue
+
+            value = data[field]
+
+            expected_type = spec.get("type")
+            if not self._validate_field_type(field_path, value, expected_type, issues):
+                continue
+
+            self._validate_field_value(field_path, value, spec.get("values"), issues)
+            self._validate_field_pattern(field_path, value, spec.get("pattern"), issues)
+
+            nested_schema = spec.get("schema")
+            if nested_schema and isinstance(value, dict):
+                self._validate_schema(value, nested_schema, field_path, issues)
+
+            item_schema = spec.get("item_schema")
+            if item_schema and isinstance(value, list):
+                for i, item in enumerate(value):
+                    item_path = f"{field_path}[{i}]"
+                    if isinstance(item, dict):
+                        self._validate_schema(item, item_schema, item_path, issues)
+
+        self._validate_unknown_fields(path, data, schema, issues)
 
     def _validate_semantics(
         self, manifest: Dict[str, Any], issues: List[ValidationIssue]

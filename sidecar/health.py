@@ -230,6 +230,50 @@ class HealthReporter:
 
     # ==================== Health Check Execution ====================
 
+    async def _execute_single_health_check(self, name: str, check: HealthCheck) -> tuple:
+        """Execute a single health check and return result"""
+        try:
+            result = check.check_fn()
+            if asyncio.iscoroutine(result):
+                result = await asyncio.wait_for(result, timeout=check.timeout)
+
+            check.last_result = bool(result)
+            check.last_check_time = datetime.now()
+            check.error_message = None
+
+            check_result = {
+                "healthy": check.last_result,
+                "critical": check.critical,
+            }
+
+            return check_result, not check.last_result, check.critical and not check.last_result
+
+        except asyncio.TimeoutError:
+            check.last_result = False
+            check.last_check_time = datetime.now()
+            check.error_message = "Timeout"
+
+            check_result = {
+                "healthy": False,
+                "error": "Timeout",
+                "critical": check.critical,
+            }
+
+            return check_result, True, check.critical
+
+        except Exception as e:
+            check.last_result = False
+            check.last_check_time = datetime.now()
+            check.error_message = str(e)
+
+            check_result = {
+                "healthy": False,
+                "error": str(e),
+                "critical": check.critical,
+            }
+
+            return check_result, True, check.critical
+
     async def run_health_checks(self) -> Dict[str, Any]:
         """Run all registered health checks"""
         results = {}
@@ -237,54 +281,14 @@ class HealthReporter:
         has_any_failure = False
 
         for name, check in self._health_checks.items():
-            try:
-                result = check.check_fn()
-                if asyncio.iscoroutine(result):
-                    result = await asyncio.wait_for(result, timeout=check.timeout)
+            check_result, failed, critical_failed = await self._execute_single_health_check(name, check)
+            results[name] = check_result
 
-                check.last_result = bool(result)
-                check.last_check_time = datetime.now()
-                check.error_message = None
-
-                if not result:
-                    has_any_failure = True
-                    if check.critical:
-                        has_critical_failure = True
-
-                results[name] = {
-                    "healthy": check.last_result,
-                    "critical": check.critical,
-                }
-
-            except asyncio.TimeoutError:
-                check.last_result = False
-                check.last_check_time = datetime.now()
-                check.error_message = "Timeout"
+            if failed:
                 has_any_failure = True
-                if check.critical:
-                    has_critical_failure = True
+            if critical_failed:
+                has_critical_failure = True
 
-                results[name] = {
-                    "healthy": False,
-                    "error": "Timeout",
-                    "critical": check.critical,
-                }
-
-            except Exception as e:
-                check.last_result = False
-                check.last_check_time = datetime.now()
-                check.error_message = str(e)
-                has_any_failure = True
-                if check.critical:
-                    has_critical_failure = True
-
-                results[name] = {
-                    "healthy": False,
-                    "error": str(e),
-                    "critical": check.critical,
-                }
-
-        # Update overall status
         if has_critical_failure:
             self._status = HealthStatus.UNHEALTHY
         elif has_any_failure:

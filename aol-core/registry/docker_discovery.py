@@ -127,10 +127,42 @@ class DockerDiscovery:
             # Fallback to CLI method
             await self._discover_via_cli(label_prefix)
 
+    async def _process_container_for_discovery(self, container, label_prefix: str):
+        """Process a single container for service discovery"""
+        try:
+            container_id = container.get("Id", "")
+            container_name = container.get("Names", [""])[0].lstrip("/")
+
+            if not container_id:
+                return
+
+            container_details = await self._docker_api_request(
+                "GET", f"/containers/{container_id}/json"
+            )
+
+            if not container_details:
+                return
+
+            labels = container_details.get("Config", {}).get("Labels", {})
+            ports = container_details.get("NetworkSettings", {}).get("Ports", {})
+
+            if (
+                f"{label_prefix}" in labels
+                and labels[f"{label_prefix}"] == "true"
+            ):
+                service_name = labels.get(f"{label_prefix}.name")
+                if service_name:
+                    await self._register_from_labels(
+                        service_name, labels, ports, container_name
+                    )
+        except Exception as e:
+            self.logger.debug(
+                f"Error processing container {container.get('Names', ['unknown'])[0]}: {e}"
+            )
+
     async def _discover_via_cli(self, label_prefix: str):
         """Discover services using Docker HTTP API directly via Unix socket"""
         try:
-            # Get list of containers using Docker HTTP API
             containers = await self._docker_api_request(
                 "GET", "/containers/json?all=false"
             )
@@ -139,43 +171,7 @@ class DockerDiscovery:
                 return
 
             for container in containers:
-                try:
-                    container_id = container.get("Id", "")
-                    container_name = container.get("Names", [""])[0].lstrip("/")
-
-                    if not container_id:
-                        continue
-
-                    # Get container details including labels and ports
-                    container_details = await self._docker_api_request(
-                        "GET", f"/containers/{container_id}/json"
-                    )
-
-                    if not container_details:
-                        continue
-
-                    labels = container_details.get("Config", {}).get("Labels", {})
-                    ports = container_details.get("NetworkSettings", {}).get(
-                        "Ports", {}
-                    )
-
-                    # Check if container is an AOL service
-                    if (
-                        f"{label_prefix}" in labels
-                        and labels[f"{label_prefix}"] == "true"
-                    ):
-                        service_name = labels.get(f"{label_prefix}.name")
-
-                        if service_name:
-                            await self._register_from_labels(
-                                service_name, labels, ports, container_name
-                            )
-
-                except Exception as e:
-                    self.logger.debug(
-                        f"Error processing container {container.get('Names', ['unknown'])[0]}: {e}"
-                    )
-                    continue
+                await self._process_container_for_discovery(container, label_prefix)
 
         except Exception as e:
             self.logger.error(f"HTTP API-based discovery failed: {e}")
@@ -273,59 +269,74 @@ class DockerDiscovery:
             self.logger.debug(f"Docker API socket request failed for {path}: {e}")
             return None
 
+    def _extract_exposed_ports(self, ports: Dict) -> list:
+        """Extract exposed ports from Docker port mappings"""
+        exposed_ports = []
+        for container_port, host_mappings in ports.items():
+            if host_mappings:
+                host_port = int(host_mappings[0]["HostPort"])
+                exposed_ports.append(host_port)
+        return exposed_ports
+
+    def _match_port_by_pattern(self, exposed_ports: list, port_type: str) -> int:
+        """Match port by known patterns"""
+        if port_type == "grpc":
+            for port in exposed_ports:
+                if 50051 <= port <= 50099:
+                    return port
+        elif port_type == "health":
+            for port in exposed_ports:
+                if 50201 <= port <= 50299:
+                    return port
+        elif port_type == "metrics":
+            for port in exposed_ports:
+                if (8080 <= port <= 8099) or port == 9090:
+                    return port
+        return 0
+
+    def _create_manifest_from_labels(
+        self, service_name: str, labels: Dict, grpc_port: int,
+        health_port: int, metrics_port: int
+    ) -> Dict:
+        """Create manifest from labels"""
+        return {
+            "kind": labels.get("aol.service.type", "AOLService"),
+            "apiVersion": "v1",
+            "metadata": {
+                "name": service_name,
+                "version": labels.get("aol.service.version", "1.0.0"),
+                "labels": {k: v for k, v in labels.items() if k.startswith("aol.")},
+            },
+            "spec": {
+                "endpoints": {
+                    "grpc": grpc_port,
+                    "health": health_port,
+                    "metrics": metrics_port,
+                }
+            },
+        }
+
     async def _register_from_labels(
         self, service_name: str, labels: Dict, ports: Dict, container_name: str
     ):
         """Register service from labels and port info"""
         try:
-            # Extract port information from labels or ports
             grpc_port = int(labels.get("aol.service.grpc_port", "0"))
             health_port = int(labels.get("aol.service.health_port", "0"))
             metrics_port = int(labels.get("aol.service.metrics_port", "0"))
 
-            # Extract ports from Docker port mappings
-            exposed_ports = []
-            for container_port, host_mappings in ports.items():
-                if host_mappings:
-                    host_port = int(host_mappings[0]["HostPort"])
-                    exposed_ports.append(host_port)
+            exposed_ports = self._extract_exposed_ports(ports)
 
-            # Match ports by known patterns
             if grpc_port == 0:
-                for port in exposed_ports:
-                    if 50051 <= port <= 50099:
-                        grpc_port = port
-                        break
-
+                grpc_port = self._match_port_by_pattern(exposed_ports, "grpc")
             if health_port == 0:
-                for port in exposed_ports:
-                    if 50201 <= port <= 50299:
-                        health_port = port
-                        break
-
+                health_port = self._match_port_by_pattern(exposed_ports, "health")
             if metrics_port == 0:
-                for port in exposed_ports:
-                    if (8080 <= port <= 8099) or port == 9090:
-                        metrics_port = port
-                        break
+                metrics_port = self._match_port_by_pattern(exposed_ports, "metrics")
 
-            # Create manifest from labels
-            manifest = {
-                "kind": labels.get("aol.service.type", "AOLService"),
-                "apiVersion": "v1",
-                "metadata": {
-                    "name": service_name,
-                    "version": labels.get("aol.service.version", "1.0.0"),
-                    "labels": {k: v for k, v in labels.items() if k.startswith("aol.")},
-                },
-                "spec": {
-                    "endpoints": {
-                        "grpc": grpc_port,
-                        "health": health_port,
-                        "metrics": metrics_port,
-                    }
-                },
-            }
+            manifest = self._create_manifest_from_labels(
+                service_name, labels, grpc_port, health_port, metrics_port
+            )
 
             from registry.service_registry import ServiceInstance
 
@@ -357,71 +368,35 @@ class DockerDiscovery:
     ):
         """Register a service from container information"""
         try:
-            # Extract port information from labels or container ports
             grpc_port = int(labels.get("aol.service.grpc_port", "0"))
             health_port = int(labels.get("aol.service.health_port", "0"))
             metrics_port = int(labels.get("aol.service.metrics_port", "0"))
 
-            # If ports not in labels, try to extract from container exposed ports
             if grpc_port == 0 or health_port == 0 or metrics_port == 0:
                 ports = container.attrs.get("NetworkSettings", {}).get("Ports", {})
                 exposed_ports = []
-
-                # Collect all exposed host ports
                 for port_map in ports.values():
                     if port_map:
                         host_port = int(port_map[0]["HostPort"])
                         exposed_ports.append(host_port)
 
-                # Match ports by known patterns
                 if grpc_port == 0:
-                    # gRPC ports typically in 50051-50099 range
-                    for port in exposed_ports:
-                        if 50051 <= port <= 50099:
-                            grpc_port = port
-                            break
-
+                    grpc_port = self._match_port_by_pattern(exposed_ports, "grpc")
                 if health_port == 0:
-                    # Health ports typically in 50201-50299 range
-                    for port in exposed_ports:
-                        if 50201 <= port <= 50299:
-                            health_port = port
-                            break
-
+                    health_port = self._match_port_by_pattern(exposed_ports, "health")
                 if metrics_port == 0:
-                    # Metrics ports typically 8080-8099 or 9090
-                    for port in exposed_ports:
-                        if (8080 <= port <= 8099) or port == 9090:
-                            metrics_port = port
-                            break
+                    metrics_port = self._match_port_by_pattern(exposed_ports, "metrics")
 
-            # Create manifest from labels
-            manifest = {
-                "kind": labels.get("aol.service.type", "AOLService"),
-                "apiVersion": "v1",
-                "metadata": {
-                    "name": service_name,
-                    "version": labels.get("aol.service.version", "1.0.0"),
-                    "labels": {k: v for k, v in labels.items() if k.startswith("aol.")},
-                },
-                "spec": {
-                    "endpoints": {
-                        "grpc": grpc_port,
-                        "health": health_port,
-                        "metrics": metrics_port,
-                    }
-                },
-            }
-
-            # Get container IP
-            host = container.name  # Use container name as hostname
+            manifest = self._create_manifest_from_labels(
+                service_name, labels, grpc_port, health_port, metrics_port
+            )
 
             from registry.service_registry import ServiceInstance
 
             instance = ServiceInstance(
                 name=service_name,
                 version=manifest["metadata"]["version"],
-                host=host,
+                host=container.name,
                 grpc_port=grpc_port,
                 health_port=health_port,
                 metrics_port=metrics_port,

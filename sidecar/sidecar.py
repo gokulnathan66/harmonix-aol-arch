@@ -208,6 +208,86 @@ class ToolExecutor:
         except Exception:
             return False
 
+    def _prepare_request_headers(self, tool: ToolConfig, headers: Optional[Dict[str, str]]) -> Dict[str, str]:
+        """Prepare request headers"""
+        request_headers = {**tool.headers}
+        if tool.api_key:
+            request_headers["Authorization"] = f"Bearer {tool.api_key}"
+        if headers:
+            request_headers.update(headers)
+        return request_headers
+
+    async def _handle_successful_response(
+        self, resp, latency_ms: float, metrics: ToolMetrics, circuit: CircuitBreaker
+    ) -> Dict[str, Any]:
+        """Handle successful HTTP response"""
+        metrics.successful_calls += 1
+        metrics.total_latency_ms += latency_ms
+        circuit.record_success()
+
+        try:
+            data = await resp.json()
+        except Exception:
+            data = await resp.text()
+
+        return {
+            "success": True,
+            "data": data,
+            "status": resp.status,
+            "latency_ms": latency_ms,
+        }
+
+    async def _handle_failed_response(
+        self, resp, latency_ms: float, metrics: ToolMetrics, circuit: CircuitBreaker
+    ) -> Dict[str, Any]:
+        """Handle failed HTTP response"""
+        metrics.failed_calls += 1
+        metrics.last_error = f"HTTP {resp.status}"
+        circuit.record_failure()
+
+        return {
+            "success": False,
+            "error": f"HTTP {resp.status}",
+            "status": resp.status,
+            "latency_ms": latency_ms,
+        }
+
+    async def _execute_http_request(self, tool: ToolConfig, circuit: CircuitBreaker, metrics: ToolMetrics,
+                                    method: str, url: str, request_headers: Dict[str, str],
+                                    payload: Optional[Dict[str, Any]], request_timeout: int) -> Dict[str, Any]:
+        """Execute HTTP request and handle response"""
+        start_time = time.time()
+        metrics.total_calls += 1
+        metrics.last_call_time = datetime.now()
+
+        try:
+            session = await self._get_session()
+
+            async with session.request(
+                method,
+                url,
+                json=payload,
+                headers=request_headers,
+                timeout=aiohttp.ClientTimeout(total=request_timeout),
+            ) as resp:
+                latency_ms = (time.time() - start_time) * 1000
+
+                if resp.status < 400:
+                    return await self._handle_successful_response(resp, latency_ms, metrics, circuit)
+                else:
+                    return await self._handle_failed_response(resp, latency_ms, metrics, circuit)
+
+        except asyncio.TimeoutError:
+            metrics.failed_calls += 1
+            metrics.last_error = "Timeout"
+            circuit.record_failure()
+            return {"success": False, "error": "Timeout"}
+        except Exception as e:
+            metrics.failed_calls += 1
+            metrics.last_error = str(e)
+            circuit.record_failure()
+            return {"success": False, "error": str(e)}
+
     async def execute(
         self,
         tool_name: str,
@@ -238,7 +318,6 @@ class ToolExecutor:
         circuit = self._circuit_breakers[tool_name]
         metrics = self._metrics[tool_name]
 
-        # Check circuit breaker
         if not circuit.can_execute():
             metrics.failed_calls += 1
             metrics.total_calls += 1
@@ -248,71 +327,15 @@ class ToolExecutor:
                 "success": False,
             }
 
-        # Prepare request
         url = f"{tool.endpoint}{path}"
-        request_headers = {**tool.headers}
-        if tool.api_key:
-            request_headers["Authorization"] = f"Bearer {tool.api_key}"
-        if headers:
-            request_headers.update(headers)
-
+        request_headers = self._prepare_request_headers(tool, headers)
         request_timeout = timeout or tool.timeout
 
-        # Execute with metrics
-        start_time = time.time()
-        metrics.total_calls += 1
-        metrics.last_call_time = datetime.now()
-
-        try:
-            session = await self._get_session()
-
-            async with session.request(
-                method,
-                url,
-                json=payload,
-                headers=request_headers,
-                timeout=aiohttp.ClientTimeout(total=request_timeout),
-            ) as resp:
-                latency_ms = (time.time() - start_time) * 1000
-
-                if resp.status < 400:
-                    metrics.successful_calls += 1
-                    metrics.total_latency_ms += latency_ms
-                    circuit.record_success()
-
-                    try:
-                        data = await resp.json()
-                    except Exception:
-                        data = await resp.text()
-
-                    return {
-                        "success": True,
-                        "data": data,
-                        "status": resp.status,
-                        "latency_ms": latency_ms,
-                    }
-                else:
-                    metrics.failed_calls += 1
-                    metrics.last_error = f"HTTP {resp.status}"
-                    circuit.record_failure()
-
-                    return {
-                        "success": False,
-                        "error": f"HTTP {resp.status}",
-                        "status": resp.status,
-                        "latency_ms": latency_ms,
-                    }
-
-        except asyncio.TimeoutError:
-            metrics.failed_calls += 1
-            metrics.last_error = "Timeout"
-            circuit.record_failure()
-            return {"success": False, "error": "Timeout", "tool": tool_name}
-        except Exception as e:
-            metrics.failed_calls += 1
-            metrics.last_error = str(e)
-            circuit.record_failure()
-            return {"success": False, "error": str(e), "tool": tool_name}
+        result = await self._execute_http_request(
+            tool, circuit, metrics, method, url, request_headers, payload, request_timeout
+        )
+        result["tool"] = tool_name
+        return result
 
     def get_metrics(self, tool_name: Optional[str] = None) -> Dict[str, Any]:
         """Get tool execution metrics"""

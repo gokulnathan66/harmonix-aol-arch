@@ -84,9 +84,8 @@ class MetricsService:
         return self.metrics_store.get(service_name, {})
 
 
-def setup_metrics_service_api(app: web.Application, metrics_service: MetricsService):
-    """Setup metrics service API endpoints"""
-
+def _create_ingest_metrics_handler(metrics_service):
+    """Create ingest metrics handler"""
     async def ingest_metrics(request):
         """POST /api/metrics - Submit metrics"""
         try:
@@ -99,7 +98,6 @@ def setup_metrics_service_api(app: web.Application, metrics_service: MetricsServ
                 )
 
             metrics = data.get("metrics", [])
-
             for metric in metrics:
                 await metrics_service.ingest_metric(
                     service_name=service_name,
@@ -113,7 +111,11 @@ def setup_metrics_service_api(app: web.Application, metrics_service: MetricsServ
         except Exception as e:
             logger.error(f"Error ingesting metrics: {e}")
             return web.json_response({"error": str(e)}, status=500)
+    return ingest_metrics
 
+
+def _create_get_service_metrics_handler(metrics_service):
+    """Create get service metrics handler"""
     async def get_service_metrics(request):
         """GET /api/metrics/{service_name} - Get service metrics"""
         try:
@@ -123,7 +125,11 @@ def setup_metrics_service_api(app: web.Application, metrics_service: MetricsServ
         except Exception as e:
             logger.error(f"Error getting metrics: {e}")
             return web.json_response({"error": str(e)}, status=500)
+    return get_service_metrics
 
+
+def _create_get_prometheus_metrics_handler():
+    """Create get Prometheus metrics handler"""
     async def get_prometheus_metrics(request):
         """GET /api/metrics/prometheus - Get Prometheus format metrics"""
         try:
@@ -133,8 +139,11 @@ def setup_metrics_service_api(app: web.Application, metrics_service: MetricsServ
         except Exception as e:
             logger.error(f"Error getting Prometheus metrics: {e}")
             return web.json_response({"error": str(e)}, status=500)
+    return get_prometheus_metrics
 
-    # Register routes
-    app.router.add_post("/api/metrics", ingest_metrics)
-    app.router.add_get("/api/metrics/{service_name}", get_service_metrics)
-    app.router.add_get("/api/metrics/prometheus", get_prometheus_metrics)
+
+def setup_metrics_service_api(app: web.Application, metrics_service: MetricsService):
+    """Setup metrics service API endpoints"""
+    app.router.add_post("/api/metrics", _create_ingest_metrics_handler(metrics_service))
+    app.router.add_get("/api/metrics/{service_name}", _create_get_service_metrics_handler(metrics_service))
+    app.router.add_get("/api/metrics/prometheus", _create_get_prometheus_metrics_handler())

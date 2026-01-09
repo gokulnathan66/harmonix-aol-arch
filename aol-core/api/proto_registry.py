@@ -68,9 +68,8 @@ class ProtoRegistry:
         return result
 
 
-def setup_proto_registry_api(app: web.Application, proto_registry: ProtoRegistry):
-    """Setup proto registry API endpoints"""
-
+def _create_get_proto_handler(proto_registry):
+    """Create get proto handler"""
     async def get_proto(request):
         """GET /api/proto/{service_name}/{filename} - Get proto file"""
         try:
@@ -95,7 +94,11 @@ def setup_proto_registry_api(app: web.Application, proto_registry: ProtoRegistry
         except Exception as e:
             logger.error(f"Error getting proto file: {e}")
             return web.json_response({"error": str(e)}, status=500)
+    return get_proto
 
+
+def _create_list_protos_handler(proto_registry):
+    """Create list protos handler"""
     async def list_protos(request):
         """GET /api/proto/list - List all proto files"""
         try:
@@ -105,7 +108,11 @@ def setup_proto_registry_api(app: web.Application, proto_registry: ProtoRegistry
         except Exception as e:
             logger.error(f"Error listing protos: {e}")
             return web.json_response({"error": str(e)}, status=500)
+    return list_protos
 
+
+def _create_upload_proto_handler(proto_registry):
+    """Create upload proto handler"""
     async def upload_proto(request):
         """POST /api/proto/{service_name}/{filename} - Upload proto file"""
         try:
@@ -126,8 +133,11 @@ def setup_proto_registry_api(app: web.Application, proto_registry: ProtoRegistry
         except Exception as e:
             logger.error(f"Error uploading proto file: {e}")
             return web.json_response({"error": str(e)}, status=500)
+    return upload_proto
 
-    # Register routes
-    app.router.add_get("/api/proto/list", list_protos)
-    app.router.add_get("/api/proto/{service_name}/{filename}", get_proto)
-    app.router.add_post("/api/proto/{service_name}/{filename}", upload_proto)
+
+def setup_proto_registry_api(app: web.Application, proto_registry: ProtoRegistry):
+    """Setup proto registry API endpoints"""
+    app.router.add_get("/api/proto/list", _create_list_protos_handler(proto_registry))
+    app.router.add_get("/api/proto/{service_name}/{filename}", _create_get_proto_handler(proto_registry))
+    app.router.add_post("/api/proto/{service_name}/{filename}", _create_upload_proto_handler(proto_registry))
