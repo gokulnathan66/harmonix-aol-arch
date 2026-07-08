@@ -23,6 +23,7 @@ The template has been updated to match the **new self-contained architecture**:
 - ✅ **Proper folder structure** - `service/`, `utils/`, `proto/`, `sidecar/` folders
 - ✅ **Complete independence** - Each service is fully self-contained
 - ✅ **Service-agnostic** - Works for agents, tools, plugins, and general services
+- ✅ **LEGO ARCH** every service should tell is follwoed like it should tell other services that i need and other services should proviced them independenly like it a lego like it offers all parts to all other services and anyone can use them by theriself
 
 ## Architecture Overview
 
