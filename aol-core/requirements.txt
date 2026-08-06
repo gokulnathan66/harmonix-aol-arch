@@ -7,7 +7,7 @@ pyyaml==6.0.1
 prometheus-client==0.19.0
 opentelemetry-api==1.22.0
 opentelemetry-sdk==1.22.0
-opentelemetry-exporter-otlp-proto-grpc==1.22.0
+opentelemetry-exporter-otlp-proto-grpc==1.39.1
 redis==5.0.1
 aiohttp==3.9.1
 tenacity==8.2.3
