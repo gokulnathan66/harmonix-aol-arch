@@ -30,7 +30,7 @@ dependencies = [
     "opentelemetry-exporter-otlp-proto-grpc (==1.22.0)",
     "opentelemetry-instrumentation-aiohttp-client (==0.43b0)",
     "aiohttp (==3.9.1)",
-    "tenacity (==8.2.3)"
+    "tenacity (==9.1.2)"
 ]
 
 
